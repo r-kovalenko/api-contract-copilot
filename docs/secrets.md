@@ -4,7 +4,7 @@ Use separate `staging` and `production` environments in each repository. Only `m
 
 ## Store values directly in GitHub
 
-Open repository **Settings → Environments → staging (or production) → Environment secrets → Add environment secret**. Never paste credentials into issues, PRs, Markdown, workflow YAML, or chat.
+Open repository **Settings â†’ Environments â†’ staging (or production) â†’ Environment secrets â†’ Add environment secret**. Never paste credentials into issues, PRs, Markdown, workflow YAML, or chat.
 
 In the main Copilot repository, prepare these names:
 
@@ -30,7 +30,7 @@ Repeat for `production` with different credentials. No placeholder or real secre
 
 ## Runtime use
 
-The manual **Check environment configuration** workflow runs only from `main`, requires the selected environment review, and checks that required names are nonempty. It never prints values, connects to a database, calls a model, or deploys anything. Its presence check does not prove credentials are valid. Ordinary CI never receives these secrets.
+In the main Copilot repository, the manual **Check environment configuration** workflow runs only from `main`, requires the selected environment review, and checks that required names are nonempty. It never prints values, connects to a database, calls a model, or deploys anything. Its presence check does not prove credentials are valid. Ordinary CI never receives these secrets.
 
 In a future deployment job, bind `environment: staging` or `environment: production`, inject `${{ secrets.NAME }}` into only the step that needs it, and pass it to the hosting provider's server-side secret store. Prefer OIDC for cloud authentication instead of a persistent cloud access key. Configure the trust policy for the exact repository and environment once the host is chosen.
 
