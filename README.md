@@ -4,6 +4,8 @@ Analyze how OpenAPI contract changes affect consumer integrations, then produce 
 
 **Status:** tested starter infrastructure. The FastAPI health endpoint and React landing page run; comparison, RAG, agents, approvals, and MCP are tracked implementation work, not completed features.
 
+[Project and task tracker](https://github.com/users/r-kovalenko/projects/2) · [CI runs](https://github.com/r-kovalenko/api-contract-copilot/actions)
+
 ## Repositories
 
 | Repository | Responsibility |

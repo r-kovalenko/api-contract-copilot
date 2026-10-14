@@ -40,3 +40,4 @@ uploads/
 .tools/
 .local-repos/
 test-results/
+coverage.xml
