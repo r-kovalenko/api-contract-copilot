@@ -1,0 +1,4 @@
+interface:
+  display_name: "Copilot Coding"
+  short_description: "Build and test the Copilot project architecture"
+  default_prompt: "Use $copilot-coding to implement or review the requested change in this repository."

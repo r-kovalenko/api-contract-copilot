@@ -1,0 +1,4 @@
+interface:
+  display_name: "Copilot Security"
+  short_description: "Review OWASP boundaries, credentials, and CI safety"
+  default_prompt: "Use $copilot-security to implement or review the requested change in this repository."
