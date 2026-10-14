@@ -1,0 +1,116 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  python:
+    name: Python tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - run: python -m pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: pytest --cov=app --cov-report=term-missing --cov-report=xml --junitxml=test-results/results.xml
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: python-test-results
+          path: |
+            backend/test-results/
+            backend/coverage.xml
+  frontend:
+    name: Frontend tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+  containers:
+    name: Container (${{ matrix.context }})
+    needs: [python, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        context: [backend, frontend]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build container
+        env:
+          CONTEXT: ${{ matrix.context }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          image="ghcr.io/${REPOSITORY,,}"
+          if [ "$CONTEXT" != "." ]; then image="$image-$CONTEXT"; fi
+          echo "IMAGE=$image:$GITHUB_SHA" >> "$GITHUB_ENV"
+          docker build --tag "$image:$GITHUB_SHA" "$CONTEXT"
+      - name: Smoke test container
+        env:
+          CONTEXT: ${{ matrix.context }}
+        run: |
+          if [ "$CONTEXT" = "frontend" ]; then
+            docker run -d --name app --add-host backend:127.0.0.1 -p 127.0.0.1:18080:8080 "$IMAGE"
+            url=http://127.0.0.1:18080/
+          else
+            docker run -d --name app -p 127.0.0.1:18080:8000 "$IMAGE"
+            path=/health
+            if [ "$CONTEXT" = "backend" ]; then path=/api/health; fi
+            url="http://127.0.0.1:18080$path"
+          fi
+          trap 'docker logs app; docker rm -f app' EXIT
+          curl --fail --retry 15 --retry-connrefused --retry-delay 1 "$url"
+      - name: Publish tested image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE"
+  ci:
+    name: CI
+    if: always()
+    needs: [python, frontend, containers]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every check to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")'

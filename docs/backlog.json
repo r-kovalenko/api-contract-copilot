@@ -1,0 +1,520 @@
+{
+  "milestones": [
+    [
+      "M1 Foundation",
+      "Local development, persistence, project and contract APIs, and the React shell."
+    ],
+    [
+      "M2 First vertical slice",
+      "Compare contracts, gather evidence, and show a cited impact report."
+    ],
+    [
+      "M3 RAG quality",
+      "Hybrid retrieval, metadata filters, source citations, and a curated evaluation set."
+    ],
+    [
+      "M4 Stateful agent workflow",
+      "Persisted sessions, orchestration, migration planning, and clarification."
+    ],
+    [
+      "M5 Approval and dynamic UI",
+      "Approval before migration-task creation and typed SSE events."
+    ],
+    [
+      "M6 MCP integration",
+      "Five Copilot operations plus provider and consumer demo servers."
+    ],
+    [
+      "M7 Observability",
+      "End-to-end traces, metrics, and diagnosable failure paths."
+    ],
+    [
+      "M8 Evaluation and delivery",
+      "Release evaluation, deployment environment, and reproducible demo."
+    ]
+  ],
+  "issues": [
+    {
+      "key": "F01",
+      "repository": "api-contract-copilot",
+      "title": "Add PostgreSQL models, migrations, and database readiness",
+      "milestone": "M1 Foundation",
+      "labels": [
+        "type:feature",
+        "area:backend",
+        "priority:P0"
+      ],
+      "acceptance": [
+        "SQLAlchemy 2 models and Alembic migrations initialize projects and contracts.",
+        "Enable pgvector through a migration; database readiness is distinct from process liveness.",
+        "Integration tests apply migrations to real PostgreSQL and verify rollback/error behavior."
+      ],
+      "dependencies": []
+    },
+    {
+      "key": "F02",
+      "repository": "api-contract-copilot",
+      "title": "Implement project creation and validated contract uploads",
+      "milestone": "M1 Foundation",
+      "labels": [
+        "type:feature",
+        "area:backend",
+        "priority:P0"
+      ],
+      "acceptance": [
+        "Create and list projects; persist versioned OpenAPI 3.x documents.",
+        "Reject malformed, oversized, and unsupported inputs with actionable errors.",
+        "Tests cover duplicate versions, project isolation, and upload failures."
+      ],
+      "dependencies": [
+        "F01"
+      ]
+    },
+    {
+      "key": "F03",
+      "repository": "api-contract-copilot",
+      "title": "Build project and contract selection screens",
+      "milestone": "M1 Foundation",
+      "labels": [
+        "type:feature",
+        "area:frontend",
+        "priority:P0"
+      ],
+      "acceptance": [
+        "Create/select a project and upload two contract versions through React.",
+        "Loading, empty, success, and validation states are accessible.",
+        "Component tests and one browser flow cover project creation and upload."
+      ],
+      "dependencies": [
+        "F02"
+      ]
+    },
+    {
+      "key": "V01",
+      "repository": "api-contract-copilot",
+      "title": "Wrap oasdiff and normalize deterministic contract changes",
+      "milestone": "M2 First vertical slice",
+      "labels": [
+        "type:feature",
+        "area:backend",
+        "priority:P0"
+      ],
+      "acceptance": [
+        "A pinned oasdiff executable compares selected contract versions.",
+        "Normalize breaking and non-breaking changes with stable IDs and evidence paths.",
+        "Tests cover field removal, additions, unchanged contracts, timeout, and invalid tool output.",
+        "Invoke the tool with validated argument arrays and no shell interpolation."
+      ],
+      "dependencies": [
+        "F02"
+      ]
+    },
+    {
+      "key": "V02",
+      "repository": "api-contract-copilot",
+      "title": "Add repository-scoped exact code search",
+      "milestone": "M2 First vertical slice",
+      "labels": [
+        "type:feature",
+        "area:backend",
+        "priority:P0"
+      ],
+      "acceptance": [
+        "Return file paths, line numbers, and snippets using ripgrep.",
+        "Restrict reads to the selected repository and reject path traversal.",
+        "Tests cover no matches, special characters, binary files, and tool failure."
+      ],
+      "dependencies": []
+    },
+    {
+      "key": "V03",
+      "repository": "api-contract-copilot",
+      "title": "Create the provider interface and cited impact report flow",
+      "milestone": "M2 First vertical slice",
+      "labels": [
+        "type:feature",
+        "area:ai",
+        "priority:P0"
+      ],
+      "acceptance": [
+        "Typed provider interface supports a deterministic fake for CI and one live model adapter.",
+        "Combine contract facts, code matches, and retrieved source IDs into a validated impact report.",
+        "Failed tools and missing evidence are explicit; unknown citations are rejected.",
+        "Tests cover invalid structured output, bounded retries, and partial evidence."
+      ],
+      "dependencies": [
+        "V01",
+        "V02",
+        "R01"
+      ]
+    },
+    {
+      "key": "V04",
+      "repository": "api-contract-copilot",
+      "title": "Display contract changes and end-to-end impact reports",
+      "milestone": "M2 First vertical slice",
+      "labels": [
+        "type:feature",
+        "area:frontend",
+        "priority:P0"
+      ],
+      "acceptance": [
+        "Select a change and show severity, explanation, affected files, and source citations.",
+        "A deterministic end-to-end test runs the upload-to-report workflow without paid APIs.",
+        "UI shows evidence gaps and retryable errors."
+      ],
+      "dependencies": [
+        "F03",
+        "V03"
+      ]
+    },
+    {
+      "key": "R01",
+      "repository": "api-contract-copilot",
+      "title": "Ingest documentation with chunk metadata and initial retrieval",
+      "milestone": "M2 First vertical slice",
+      "labels": [
+        "type:feature",
+        "area:rag",
+        "priority:P0"
+      ],
+      "acceptance": [
+        "Upload text documentation and persist chunks with project, API version, type, and source IDs.",
+        "Provide initial keyword retrieval for the first vertical slice.",
+        "Tests cover duplicate ingestion, empty documents, and project/version filtering."
+      ],
+      "dependencies": [
+        "F01"
+      ]
+    },
+    {
+      "key": "R02",
+      "repository": "api-contract-copilot",
+      "title": "Add pgvector embeddings and hybrid retrieval",
+      "milestone": "M3 RAG quality",
+      "labels": [
+        "type:feature",
+        "area:rag",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "Combine PostgreSQL full-text and vector search with documented rank fusion.",
+        "Use a replaceable embedding provider and deterministic test embeddings.",
+        "Integration tests verify metadata filtering and source attribution."
+      ],
+      "dependencies": [
+        "R01"
+      ]
+    },
+    {
+      "key": "R03",
+      "repository": "api-contract-copilot",
+      "title": "Create retrieval and contract-diff evaluation datasets",
+      "milestone": "M3 RAG quality",
+      "labels": [
+        "type:feature",
+        "area:testing",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "Use public or synthetic fixtures and explicit expected relevant sources.",
+        "Measure Recall@5 against the target of at least 80%.",
+        "Contract scenarios assert expected breaking changes and report regressions.",
+        "Publish machine-readable evaluation results in CI."
+      ],
+      "dependencies": [
+        "R02",
+        "V01"
+      ]
+    },
+    {
+      "key": "A01",
+      "repository": "api-contract-copilot",
+      "title": "Persist sessions and resumable orchestrator state",
+      "milestone": "M4 Stateful agent workflow",
+      "labels": [
+        "type:feature",
+        "area:ai",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "Persist running, waiting_for_user, waiting_for_approval, completed, and failed states.",
+        "The orchestrator owns agent/tool routing; agents do not call one another.",
+        "Tests cover restart/resume, duplicate requests, and failed transitions."
+      ],
+      "dependencies": [
+        "V03"
+      ]
+    },
+    {
+      "key": "A02",
+      "repository": "api-contract-copilot",
+      "title": "Implement migration planning and clarification",
+      "milestone": "M4 Stateful agent workflow",
+      "labels": [
+        "type:feature",
+        "area:ai",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "Return ordered steps, test checklist, open questions, and proposed task.",
+        "Ask for missing required context and resume from the stored answer.",
+        "Validate structured output and test incomplete or conflicting evidence."
+      ],
+      "dependencies": [
+        "A01"
+      ]
+    },
+    {
+      "key": "H01",
+      "repository": "api-contract-copilot",
+      "title": "Enforce persisted approval before migration-task creation",
+      "milestone": "M5 Approval and dynamic UI",
+      "labels": [
+        "type:feature",
+        "area:backend",
+        "priority:P0"
+      ],
+      "acceptance": [
+        "Display proposed task and require an explicit approve/reject decision.",
+        "Execute each approved action at most once; rejection never creates a task.",
+        "Tests cover unauthorized, stale, repeated, and concurrent decisions plus restart/resume."
+      ],
+      "dependencies": [
+        "A02"
+      ]
+    },
+    {
+      "key": "H02",
+      "repository": "api-contract-copilot",
+      "title": "Stream typed UI events and render trusted components",
+      "milestone": "M5 Approval and dynamic UI",
+      "labels": [
+        "type:feature",
+        "area:frontend",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "SSE supports reconnect/resume and typed message, plan, source, tool, report, approval, and error events.",
+        "React renders only trusted components; model-supplied HTML/JavaScript is never executed.",
+        "Tests cover disconnects, unknown event types, and approval interactions."
+      ],
+      "dependencies": [
+        "H01",
+        "V04"
+      ]
+    },
+    {
+      "key": "M01",
+      "repository": "api-contract-copilot",
+      "title": "Expose the five Copilot MCP operations",
+      "milestone": "M6 MCP integration",
+      "labels": [
+        "type:feature",
+        "area:mcp",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "Implement get_contract, list_contract_versions, compare_contracts, search_api_docs, and get_change_details.",
+        "Validate inputs, preserve project scoping, and return structured errors.",
+        "Protocol tests cover every operation and invalid requests."
+      ],
+      "dependencies": [
+        "V03",
+        "R02"
+      ]
+    },
+    {
+      "key": "M02",
+      "repository": "api-contract-copilot",
+      "title": "Connect provider and consumer MCP demos",
+      "milestone": "M6 MCP integration",
+      "labels": [
+        "type:feature",
+        "area:mcp",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "Configure and query both demo MCP servers from the orchestrator.",
+        "Timeouts and unavailable servers produce evidence gaps without fabricated results.",
+        "Integration tests pin compatible demo revisions and cover connection failure."
+      ],
+      "dependencies": [
+        "M01",
+        "P02",
+        "C02"
+      ]
+    },
+    {
+      "key": "O01",
+      "repository": "api-contract-copilot",
+      "title": "Add OpenTelemetry tracing and local Jaeger",
+      "milestone": "M7 Observability",
+      "labels": [
+        "type:feature",
+        "area:observability",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "Trace every agent, LLM, tool, RAG, MCP, and approval execution.",
+        "Record latency, token counts, retrieval IDs, errors, and approval wait time.",
+        "Exclude secrets and sensitive raw content from logs.",
+        "Tests assert trace propagation and a documented local Jaeger demo works."
+      ],
+      "dependencies": [
+        "A01",
+        "M02"
+      ]
+    },
+    {
+      "key": "E01",
+      "repository": "api-contract-copilot",
+      "title": "Add full demo regression and optional live-model evaluation",
+      "milestone": "M8 Evaluation and delivery",
+      "labels": [
+        "type:feature",
+        "area:testing",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "Exercise contract upload through approved migration-task creation and resumed sessions.",
+        "Mandatory CI uses fakes; live evaluations require manual dispatch and scoped secrets.",
+        "Report retrieval quality, contract correctness, approval safety, trace coverage, and latency."
+      ],
+      "dependencies": [
+        "R03",
+        "H02",
+        "M02",
+        "O01"
+      ]
+    },
+    {
+      "key": "D01",
+      "repository": "api-contract-copilot",
+      "title": "Configure a staging host and deployment with rollback",
+      "milestone": "M8 Evaluation and delivery",
+      "labels": [
+        "type:feature",
+        "area:devops",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "Select hosting and document expected cost before provisioning paid resources.",
+        "Deploy tested immutable GHCR image digests through a protected staging environment.",
+        "Configure secrets, persistent PostgreSQL, migrations, readiness checks, and rollback.",
+        "Smoke tests verify the deployed app; production deployment remains a separate decision."
+      ],
+      "dependencies": []
+    },
+    {
+      "key": "D02",
+      "repository": "api-contract-copilot",
+      "title": "Document the release checklist and reproducible demo",
+      "milestone": "M8 Evaluation and delivery",
+      "labels": [
+        "type:feature",
+        "area:docs",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "Document configuration, startup, test commands, MCP setup, and a complete example.",
+        "Record demo repository revisions and publish release notes.",
+        "Confirm PRD release criteria and document known limitations."
+      ],
+      "dependencies": [
+        "E01",
+        "D01"
+      ]
+    },
+    {
+      "key": "D03",
+      "repository": "api-contract-copilot",
+      "title": "Choose a license for the public repositories",
+      "milestone": "M1 Foundation",
+      "labels": [
+        "type:feature",
+        "area:docs",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "The owner chooses the intended license and copyright holder.",
+        "Add consistent LICENSE files and dependency attribution where needed."
+      ],
+      "dependencies": []
+    },
+    {
+      "key": "P01",
+      "repository": "api-provider-demo",
+      "title": "Expand versioned API fixtures and migration documentation",
+      "milestone": "M2 First vertical slice",
+      "labels": [
+        "type:feature",
+        "area:backend",
+        "priority:P0"
+      ],
+      "acceptance": [
+        "Add removed endpoints, required request fields, type changes, and non-breaking additions.",
+        "Document expected oasdiff results for each scenario.",
+        "Verify checked-in contracts match the provider implementation."
+      ],
+      "dependencies": []
+    },
+    {
+      "key": "P02",
+      "repository": "api-provider-demo",
+      "title": "Expose provider metadata through MCP",
+      "milestone": "M6 MCP integration",
+      "labels": [
+        "type:feature",
+        "area:mcp",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "Implement get_openapi_spec, get_api_version, and get_changelog with the Python MCP SDK.",
+        "Reject unknown versions and file traversal; expose only intended fixture resources.",
+        "Protocol tests exercise all operations and structured failures."
+      ],
+      "dependencies": [
+        "P01"
+      ]
+    },
+    {
+      "key": "C01",
+      "repository": "api-consumer-demo",
+      "title": "Expand realistic consumer integrations and migration tests",
+      "milestone": "M2 First vertical slice",
+      "labels": [
+        "type:feature",
+        "area:backend",
+        "priority:P0"
+      ],
+      "acceptance": [
+        "Add example usages corresponding to provider breaking-change fixtures.",
+        "Demonstrate v1 success, v2 incompatibility, and an explicit migration example.",
+        "Keep tests deterministic with mocked HTTP and no production credentials."
+      ],
+      "dependencies": [
+        "P01"
+      ]
+    },
+    {
+      "key": "C02",
+      "repository": "api-consumer-demo",
+      "title": "Expose repository evidence through MCP",
+      "milestone": "M6 MCP integration",
+      "labels": [
+        "type:feature",
+        "area:mcp",
+        "priority:P1"
+      ],
+      "acceptance": [
+        "Implement search_code, get_file, and list_dependencies.",
+        "Scope paths to the demo checkout, reject traversal and symlink escapes, and cap output sizes.",
+        "Protocol tests verify exact paths/lines and unavailable resources."
+      ],
+      "dependencies": [
+        "C01"
+      ]
+    }
+  ]
+}
