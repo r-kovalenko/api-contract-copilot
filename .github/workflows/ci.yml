@@ -66,6 +66,7 @@ jobs:
       contents: read
       packages: write
     strategy:
+      fail-fast: false
       matrix:
         context: [backend, frontend]
     steps:
@@ -95,7 +96,7 @@ jobs:
             url="http://127.0.0.1:18080$path"
           fi
           trap 'docker logs app; docker rm -f app' EXIT
-          curl --fail --retry 15 --retry-connrefused --retry-delay 1 "$url"
+          curl --fail --retry 15 --retry-all-errors --retry-delay 1 --max-time 5 --retry-max-time 45 "$url"
       - name: Publish tested image
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
