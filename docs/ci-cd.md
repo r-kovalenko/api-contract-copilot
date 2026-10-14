@@ -35,4 +35,16 @@ Run the full checks after updates and commit the lock changes together. Frontend
 
 ## Branch workflow
 
-Work through pull requests and require the final `CI` check before merging. Squash merges keep history concise. The solo-owner workflow does not require a second person's review. A staging deployment will get its own protected GitHub environment once a host is selected.
+Work through pull requests and require the final `CI` check before merging. Squash merges keep history concise. The solo-owner workflow does not require a second person's PR review. Protected `staging` and `production` environments are prepared for future deployment; jobs accessing their credentials require owner approval. Hosting is not configured.
+
+## Security checks and credentials
+
+CI calls the reusable security workflow before building or publishing containers. It scans Git history with Gitleaks, Python code with Bandit, locked dependencies with pip-audit/npm audit, and Python/TypeScript with CodeQL. Weekly runs check for newly disclosed vulnerabilities. See [the security baseline](security.md) for blocking thresholds and CodeQL triage requirements.
+
+Security tools are locked separately in `security/requirements.txt`. Regenerate from the repository root with:
+
+```sh
+pip-compile --allow-unsafe --strip-extras --generate-hashes --output-file=security/requirements.txt security/requirements.in
+```
+
+GitHub environment secrets are prepared as described in [credential handling](secrets.md). Ordinary CI has no application credentials. The manual configuration check verifies presence only, after environment approval; it does not deploy or make paid API calls.

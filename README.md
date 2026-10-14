@@ -4,7 +4,7 @@ Analyze how OpenAPI contract changes affect consumer integrations, then produce 
 
 **Status:** tested starter infrastructure. The FastAPI health endpoint and React landing page run; comparison, RAG, agents, approvals, and MCP are tracked implementation work, not completed features.
 
-[Project and task tracker](https://github.com/users/r-kovalenko/projects/2) · [CI runs](https://github.com/r-kovalenko/api-contract-copilot/actions)
+[Project and task tracker](https://github.com/users/r-kovalenko/projects/2) Â· [CI runs](https://github.com/r-kovalenko/api-contract-copilot/actions)
 
 ## Repositories
 
@@ -39,7 +39,7 @@ npm run dev
 
 Backend liveness: http://localhost:8000/api/health. API docs: http://localhost:8000/docs. Vite prints the frontend development URL. The starter UI does not yet call application APIs.
 
-For the container stack, copy `.env.example` to `.env`, then:
+For the container stack, copy `.env.example` to `.env`, set a unique local `POSTGRES_PASSWORD`, then:
 
 ```sh
 docker compose up --build
@@ -69,6 +69,10 @@ See [delivery details](docs/ci-cd.md), [contribution guidance](CONTRIBUTING.md),
 
 ## Requirements and architecture
 
-[Product requirements](docs/Product_Requirements.docx) and [system design](docs/System_Design.docx) describe the target MVP. Deterministic tools supply contract facts and exact code evidence; RAG supplies contextual sources; LLMs interpret those inputs. The orchestrator owns persisted state and approval decisions.
+[Product requirements](docs/prd.md) and [system design](docs/system-design.md) describe the target MVP. Deterministic tools supply contract facts and exact code evidence; RAG supplies contextual sources; LLMs interpret those inputs. The orchestrator owns persisted state and approval decisions.
 
 Public repository visibility is not an open-source license. License selection is tracked as an owner decision.
+
+## Coding and security
+
+Project skills are in `.agents/skills/`; repository guidance is in [AGENTS.md](AGENTS.md). Follow the [OWASP control baseline](docs/security.md) and [GitHub environment-secret guide](docs/secrets.md). Required CI includes Gitleaks, Bandit, dependency audits, and CodeQL analysis before image publication.
