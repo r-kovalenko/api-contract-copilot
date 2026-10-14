@@ -8,3 +8,7 @@ __pycache__
 .env.*
 .tools
 .local-repos
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
