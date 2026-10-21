@@ -58,7 +58,7 @@ pytest==9.1.1
     #   pytest-cov
 pytest-cov==7.1.0
     # via api-contract-copilot (backend/pyproject.toml)
-ruff==0.17.0
+ruff==0.17.1
     # via api-contract-copilot (backend/pyproject.toml)
 starlette==1.8.0
     # via fastapi
