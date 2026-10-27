@@ -25,7 +25,7 @@ The synthetic demos intentionally demonstrate incompatible API versions; this is
 
 - Gitleaks scans Git history with redacted output and a checksum-pinned binary. Findings block CI.
 - Bandit scans Python application code for medium/high-severity findings. Findings block CI; tests are not scanned as application code.
-- pip-audit checks locked Python runtime and development dependencies. Known advisories block CI; scanner/network failures do not silently pass.
+- pip-audit checks locked Python runtime, development, and security-scanner dependencies. Known advisories block CI; scanner/network failures do not silently pass.
 - The main frontend runs `npm audit --audit-level=high` against its lockfile.
 - CodeQL runs extended security analysis for Python and, in the main repository, JavaScript/TypeScript. Analysis failures block CI; findings appear in GitHub code scanning and require triage. Successful analysis alone does not mean zero alerts.
 - Security workflows run inside required CI before container publication, and separately on a weekly schedule to catch new advisories. Dependency changes remain covered by Dependabot.
