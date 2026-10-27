@@ -38,7 +38,7 @@ GitHub environment secrets do not automatically become a local `.env`, a contain
 
 ## Local development and rotation
 
-Copy `.env.example` to `.env`, set a unique local `POSTGRES_PASSWORD`, and keep the populated file ignored. Environment files are local plaintext configuration, not encrypted storage. Compose reads the local database values; the future application configuration layer will load runtime provider/database settings. Keep separate credentials for every environment with the minimum permissions and provider budget needed.
+Copy `.env.example` to `.env`, set a unique local `POSTGRES_PASSWORD`, and keep the populated file ignored. Environment files are local plaintext configuration, not encrypted storage. Compose passes database values to the backend, which builds a properly escaped PostgreSQL URL; an explicit `DATABASE_URL` overrides those values. Outside Compose, export `DATABASE_URL` in the backend process environment; Python does not automatically load `.env`. Live-model runtime configuration remains future work. Keep separate credentials for every environment with the minimum permissions and provider budget needed.
 
 If a credential leaks, revoke/rotate it at the provider, update GitHub and the runtime secret store, and review usage. Removing the current file or masking logs does not revoke the credential or erase Git history. GitHub push protection and Gitleaks reduce accidental exposure; neither replaces rotation.
 
