@@ -20,7 +20,7 @@ click==8.5.0
     # via uvicorn
 colorama==0.4.6
     # via pytest
-coverage==7.16.2
+coverage==7.17.0
     # via pytest-cov
 fastapi==0.143.0
     # via api-contract-copilot (backend/pyproject.toml)
