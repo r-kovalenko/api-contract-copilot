@@ -47,6 +47,26 @@ def test_project_api_persists_lists_selects_and_paginates(migrated):
         assert len(session.scalars(select(Project)).all()) == 2
 
 
+def test_failed_project_commit_returns_error_and_rolls_back(migrated):
+    from unittest.mock import patch
+
+    from sqlalchemy.exc import OperationalError
+
+    with (
+        patch("app.projects.get_engine", return_value=migrated),
+        patch(
+            "sqlalchemy.orm.Session.commit",
+            side_effect=OperationalError("private connection", {}, Exception("private password")),
+        ),
+        TestClient(app) as client,
+    ):
+        response = client.post("/api/projects", json={"name": "Must not be saved"})
+        assert response.status_code == 503
+        assert "private" not in response.text
+    with session_scope(migrated) as session:
+        assert list(session.scalars(select(Project))) == []
+
+
 @pytest.fixture(scope="module")
 def engine():
     value = os.environ.get("TEST_DATABASE_URL")

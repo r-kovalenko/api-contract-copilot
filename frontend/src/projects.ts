@@ -6,13 +6,16 @@ export interface Project {
 }
 
 export async function listProjects(offset: number, signal: AbortSignal): Promise<Project[]> {
-  const response = await fetch(`/api/projects?offset=${offset}&limit=20`, { signal });
+  const response = await fetch(`/api/projects?offset=${offset}&limit=20`, {
+    signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
+  });
   if (!response.ok) throw new Error('Projects could not be loaded.');
   return response.json();
 }
 
 export async function createProject(name: string, description: string): Promise<Project> {
   const response = await fetch('/api/projects', {
+    signal: AbortSignal.timeout(10_000),
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, description: description || null }),
