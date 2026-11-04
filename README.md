@@ -111,6 +111,8 @@ See [delivery details](docs/ci-cd.md), [contribution guidance](CONTRIBUTING.md),
 
 ## Requirements and architecture
 
+The [React design system](docs/design-system.md) includes shared components, color tokens, and responsive screens. Projects uses the real API; Contracts, Comparison, Impact Report, and Components are explicitly labelled sample previews for design review.
+
 [Product requirements](docs/prd.md) and [system design](docs/system-design.md) describe the target MVP. Deterministic tools supply contract facts and exact code evidence; RAG supplies contextual sources; LLMs interpret those inputs. The orchestrator owns persisted state and approval decisions.
 
 Public repository visibility is not an open-source license. License selection is tracked as an owner decision.

@@ -1,7 +1,22 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createProject, listProjects, type Project } from './projects';
+import { DesignPreview, type Screen } from './DesignPreview';
+import { Shell } from './Shell';
+import { Badge, Button, EmptyState, Feedback, PageHeader, Panel } from './ui';
 
 export function App() {
+  const [screen, setScreen] = useState<Screen>('projects');
+  function navigate(next: Screen) {
+    setScreen(next);
+    requestAnimationFrame(() => document.getElementById('workspace-main')?.focus());
+  }
+  return <Shell screen={screen} navigate={navigate}>
+    <div hidden={screen !== 'projects'}><ProjectWorkspace /></div>
+    {screen !== 'projects' && <DesignPreview screen={screen} navigate={navigate} />}
+  </Shell>;
+}
+
+function ProjectWorkspace() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selected, setSelected] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,17 +64,11 @@ export function App() {
     }
   }
 
-  return <main>
-    <header>
-      <p className="eyebrow">API CONTRACT COPILOT · LOCAL WORKSPACE</p>
-      <h1>Start with a project.</h1>
-      <p>Give your API integration a home. Next, you’ll add two contract versions and explore what changed.</p>
-    </header>
-    <nav aria-label="MVP progress" className="steps">
-      <span aria-current="step">1 · Project</span><span>2 · Contracts — next</span><span>3 · Compare — planned</span><span>4 · Impact — planned</span>
-    </nav>
+  return <>
+    <PageHeader eyebrow="WORKSPACE / PROJECTS" title="Your next migration starts here." action={<Badge tone="success">Projects · Live feature</Badge>}>Organize your API contracts and keep each integration’s changes in one place.</PageHeader>
+    <div className="journey"><span className="journey-current">01 <strong>Create a project</strong></span><span>02 Add contracts</span><span>03 Compare changes</span><span>04 Explore impact</span></div>
     <div className="workspace">
-      <section aria-labelledby="create-title">
+      <Panel aria-labelledby="create-title">
         <p className="eyebrow">STEP 1</p>
         <h2 id="create-title">Create a project</h2>
         <form onSubmit={submit}>
@@ -67,36 +76,35 @@ export function App() {
           <input id="project-name" required maxLength={200} value={name} onChange={event => setName(event.target.value)} placeholder="Customer API migration" />
           <label htmlFor="project-description">Description <span className="muted">(optional)</span></label>
           <textarea id="project-description" maxLength={2000} rows={4} value={description} onChange={event => setDescription(event.target.value)} placeholder="What integration are you investigating?" />
-          <button type="submit" disabled={saving || !name.trim()}>{saving ? 'Saving…' : 'Create project'}</button>
-          {saveError && <p role="alert">{saveError}</p>}
-          <p role="status">{notice}</p>
+          <Button type="submit" disabled={saving || !name.trim()}>{saving ? 'Saving…' : 'Create project'}</Button>
+          {saveError && <Feedback tone="error">{saveError}</Feedback>}
+          {notice && <Feedback tone="success">{notice}</Feedback>}
         </form>
-      </section>
-      <section aria-labelledby="projects-title" aria-busy={loading}>
+      </Panel>
+      <Panel aria-labelledby="projects-title" aria-busy={loading}>
         <h2 id="projects-title">Your projects</h2>
-        {loading ? <p role="status">Loading projects…</p> : error ? <>
-          <p role="alert">{error}</p><button onClick={() => setRevision(value => value + 1)}>Retry</button>
+        {loading ? <Feedback>Loading projects…</Feedback> : error ? <>
+          <Feedback tone="error">{error}</Feedback><Button variant="secondary" onClick={() => setRevision(value => value + 1)}>Retry</Button>
         </> : <>
-          {projects.length === 0 ? <p>{offset === 0 ? 'No projects yet. Create your first project to begin.' : 'No more projects.'}</p> :
+          {projects.length === 0 ? <EmptyState title={offset === 0 ? 'Make room for your next change' : 'You’re all caught up'}>{offset === 0 ? 'No projects yet. Create your first project to begin.' : 'No more projects.'}</EmptyState> :
             <ul className="projects">{projects.map(project => <li key={project.id}>
               <button className="project" aria-pressed={selected?.id === project.id} onClick={() => setSelected(project)}>
                 <strong>{project.name}</strong><span>{project.description || 'No description'}</span>
               </button>
             </li>)}</ul>}
           <div className="pagination">
-            <button disabled={offset === 0} onClick={() => setOffset(value => Math.max(0, value - 20))}>Previous</button>
+            <Button variant="secondary" disabled={offset === 0} onClick={() => setOffset(value => Math.max(0, value - 20))}>Previous</Button>
             <span>Page {offset / 20 + 1}</span>
-            <button disabled={projects.length < 20} onClick={() => setOffset(value => value + 20)}>Next</button>
+            <Button variant="secondary" disabled={projects.length < 20} onClick={() => setOffset(value => value + 20)}>Next</Button>
           </div>
         </>}
-      </section>
+      </Panel>
     </div>
-    {selected && <section aria-labelledby="selected-title" className="selected">
+    {selected && <Panel aria-labelledby="selected-title" className="selected">
       <p className="eyebrow">SELECTED PROJECT</p>
       <h2 id="selected-title">{selected.name}</h2>
       <p>{selected.description || 'Ready for your API contracts.'}</p>
       <p><strong>Up next:</strong> upload your baseline and candidate OpenAPI versions. Contract upload will be added in Step 2.</p>
-    </section>}
-    <footer>Single-user local preview · Projects are stored in PostgreSQL · Use synthetic data</footer>
-  </main>;
+    </Panel>}
+  </>;
 }
