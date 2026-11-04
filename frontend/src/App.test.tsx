@@ -9,7 +9,8 @@ describe('project workspace', () => {
     expect(html).toContain('for="project-name"');
     expect(html).toContain('for="project-description"');
     expect(html).toContain('Loading projects');
-    expect(html).toContain('Contracts — next');
-    expect(html).toContain('Compare — planned');
+    expect(html).toContain('Main navigation');
+    expect(html).toContain('Preview');
+    expect(html).toContain('Skip to content');
   });
 });
