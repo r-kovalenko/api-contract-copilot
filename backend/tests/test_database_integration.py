@@ -22,6 +22,31 @@ from app.main import app
 pytestmark = pytest.mark.integration
 
 
+def test_project_api_persists_lists_selects_and_paginates(migrated):
+    from unittest.mock import patch
+
+    with patch("app.projects.get_engine", return_value=migrated), TestClient(app) as client:
+        assert client.get("/api/projects").json() == []
+        response = client.post(
+            "/api/projects", json={"name": "  Customer API  ", "description": "Synthetic demo"}
+        )
+        assert response.status_code == 201
+        first = response.json()
+        assert first["name"] == "Customer API"
+        assert first["created_at"]
+        assert client.get(f"/api/projects/{first['id']}").json() == first
+        assert client.get(f"/api/projects/{uuid4()}").status_code == 404
+        assert client.get("/api/projects/not-a-uuid").status_code == 422
+        second = client.post("/api/projects", json={"name": "Another API"}).json()
+        assert client.get("/api/projects?limit=1").json() == [second]
+        assert client.get("/api/projects?limit=1&offset=1").json() == [first]
+        assert client.get("/api/projects?limit=101").status_code == 422
+        assert client.get("/api/projects?offset=-1").status_code == 422
+    # A new connection observes committed data, as a browser reload would.
+    with session_scope(migrated) as session:
+        assert len(session.scalars(select(Project)).all()) == 2
+
+
 @pytest.fixture(scope="module")
 def engine():
     value = os.environ.get("TEST_DATABASE_URL")

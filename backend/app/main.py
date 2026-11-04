@@ -4,8 +4,12 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.readiness import database_ready
 from app.db.session import get_engine
+from app.projects import router
+from app.request_limits import ProjectBodyLimit
 
 app = FastAPI(title="API Contract Copilot", version="0.1.0")
+app.add_middleware(ProjectBodyLimit)
+app.include_router(router)
 
 
 class HealthResponse(BaseModel):

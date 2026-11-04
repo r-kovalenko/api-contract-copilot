@@ -2,7 +2,7 @@
 
 Analyze how OpenAPI contract changes affect consumer integrations, then produce evidence-backed impact reports and migration plans.
 
-**Status:** database foundation and tested starter infrastructure. SQLAlchemy project/contract models, Alembic migrations, pgvector enablement, and database readiness are implemented. Upload APIs, comparison, RAG, agents, approvals, and MCP remain tracked implementation work.
+**Status:** first local MVP checkpoint: create, list and select projects in React with PostgreSQL persistence. SQLAlchemy project/contract models, Alembic migrations, pgvector enablement, and database readiness are implemented. Contract uploads, comparison, RAG, agents, approvals, and MCP remain tracked implementation work. See the [step-by-step demo and review checkpoints](docs/mvp-steps.md).
 
 [Project and task tracker](https://github.com/users/r-kovalenko/projects/2) Â· [CI runs](https://github.com/r-kovalenko/api-contract-copilot/actions)
 
@@ -37,7 +37,7 @@ npm ci
 npm run dev
 ```
 
-Backend liveness: http://localhost:8000/api/health. Database readiness: http://localhost:8000/api/ready. API docs: http://localhost:8000/docs. Vite prints the frontend development URL. The starter UI does not yet call application APIs.
+Backend liveness: http://localhost:8000/api/health. Database readiness: http://localhost:8000/api/ready. API docs: http://localhost:8000/docs. Vite prints the frontend development URL and proxies `/api` to the backend. The UI creates and lists projects through the API. This unauthenticated, single-user preview must remain local; use synthetic data.
 
 For the container stack, copy `.env.example` to `.env`, set a unique local `POSTGRES_PASSWORD`, then:
 
