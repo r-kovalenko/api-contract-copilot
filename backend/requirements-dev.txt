@@ -22,9 +22,9 @@ click==8.5.0
     # via uvicorn
 colorama==0.4.6
     # via pytest
-coverage==7.16.2
+coverage==7.17.0
     # via pytest-cov
-fastapi==0.143.0
+fastapi==0.162.0
     # via api-contract-copilot (backend/pyproject.toml)
 greenlet==3.5.6
     # via sqlalchemy
@@ -46,11 +46,11 @@ mako==1.4.3
     # via alembic
 markupsafe==3.0.4
     # via mako
-opentelemetry-api==1.45.1
+opentelemetry-api==1.45.2
     # via fastapi
 packaging==26.3
     # via pytest
-pluggy==1.6.0
+pluggy==1.7.0
     # via
     #   pytest
     #   pytest-cov
@@ -58,25 +58,25 @@ psycopg==3.3.6
     # via api-contract-copilot (backend/pyproject.toml)
 psycopg-binary==3.3.6
     # via psycopg
-pydantic==2.14.1
+pydantic==2.14.2
     # via fastapi
-pydantic-core==2.50.1
+pydantic-core==2.50.2
     # via pydantic
 pygments==2.21.0
     # via pytest
-pytest==9.1.1
+pytest==9.2.0
     # via
     #   api-contract-copilot (backend/pyproject.toml)
     #   pytest-cov
 pytest-cov==7.1.0
     # via api-contract-copilot (backend/pyproject.toml)
-ruff==0.17.0
+ruff==0.17.3
     # via api-contract-copilot (backend/pyproject.toml)
-sqlalchemy==2.0.55
+sqlalchemy==2.1.6
     # via
     #   alembic
     #   api-contract-copilot (backend/pyproject.toml)
-starlette==1.8.0
+starlette==1.10.0
     # via fastapi
 typing-extensions==4.16.0
     # via
@@ -94,7 +94,7 @@ typing-inspection==0.4.4
     # via
     #   fastapi
     #   pydantic
-tzdata==2026.5
+tzdata==2026.6
     # via psycopg
 uvicorn==0.54.0
     # via api-contract-copilot (backend/pyproject.toml)
