@@ -41,3 +41,6 @@ uploads/
 .local-repos/
 test-results/
 coverage.xml
+
+# Local audit diagnostics
+security-reports/
