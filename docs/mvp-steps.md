@@ -30,6 +30,8 @@ docker compose exec backend python -m alembic upgrade head
 
 Selection is temporary UI state; projects are persisted. Each list page contains up to 20 projects. Identical names are allowed; UUIDs identify projects. Contract upload and comparison are labelled as future steps rather than presented as working actions.
 
+CI runs a Chromium walkthrough against the real backend and a fresh PostgreSQL database, including create/reload/select, escaped markup, load retry and failed-save input retention. It uploads a screenshot and failure traces as `browser-test-results`. To run it locally, start a backend on port 8000 with a disposable empty migrated database, then run `npx playwright install chromium` and `npm run test:e2e` from `frontend`. Playwright starts Vite on port 5173; stop any existing server on that port first. The walkthrough creates synthetic projects and expects an empty database on its first run.
+
 For development without rebuilding containers, run the backend as documented in the README, then `npm run dev` in `frontend`. Vite proxies `/api` to the local backend on port 8000. No browser credentials are required for this loopback-only, single-user preview. Do not expose these unauthenticated endpoints publicly.
 
 ## Step 1 API
