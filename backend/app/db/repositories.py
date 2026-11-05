@@ -6,6 +6,24 @@ from sqlalchemy.orm import Session
 from app.db.models import ApiContract, Project
 
 
+def get_project(session: Session, project_id: UUID) -> Project | None:
+    return session.get(Project, project_id)
+
+
+def list_contracts(
+    session: Session, project_id: UUID, offset: int, limit: int
+) -> list[ApiContract]:
+    return list(
+        session.scalars(
+            select(ApiContract)
+            .where(ApiContract.project_id == project_id)
+            .order_by(ApiContract.created_at.desc(), ApiContract.id.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+    )
+
+
 def list_projects(session: Session, offset: int, limit: int) -> list[Project]:
     return list(
         session.scalars(

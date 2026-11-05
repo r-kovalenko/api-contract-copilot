@@ -11,6 +11,8 @@ Work one demoable step at a time and pause for owner review after each step. A c
 
 Step 4 is the first end-to-end MVP preview. Migration planning, persisted agent conversations, approval, MCP, richer RAG and observability follow the PRD implementation order after that preview is accepted.
 
+Step 2 backend checkpoint: project-scoped JSON/YAML uploads, schema validation and immutable contract APIs are implemented in feature #2. Use the [API walkthrough](contract-uploads.md) to review them. The React upload and old/new version-selection flow remains feature #3/#32.
+
 AWS deployment is a later checkpoint after the local flow works. It will add cloud learning without making credentials or paid infrastructure a prerequisite for the first preview.
 
 ## Step 1 walkthrough

@@ -1,0 +1,18 @@
+openapi: 3.1.0
+info:
+  title: Synthetic Customer API
+  version: '2.0'
+paths:
+  /customers:
+    get:
+      responses:
+        '200':
+          description: A synthetic customer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  display_name:
+                    type: string
+                required: [display_name]
