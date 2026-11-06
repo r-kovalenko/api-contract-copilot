@@ -77,9 +77,9 @@ pluggy==1.7.0
     # via
     #   pytest
     #   pytest-cov
-psycopg==3.3.6
+psycopg==3.3.7
     # via api-contract-copilot (backend/pyproject.toml)
-psycopg-binary==3.3.6
+psycopg-binary==3.3.7
     # via psycopg
 pydantic==2.14.2
     # via
