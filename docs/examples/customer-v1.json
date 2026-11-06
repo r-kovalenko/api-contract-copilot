@@ -1,0 +1,24 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Synthetic Customer API", "version": "1.0" },
+  "paths": {
+    "/customers": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "A synthetic customer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "full_name": { "type": "string" } },
+                  "required": ["full_name"]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

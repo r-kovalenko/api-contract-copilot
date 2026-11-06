@@ -2,7 +2,7 @@
 
 Analyze how OpenAPI contract changes affect consumer integrations, then produce evidence-backed impact reports and migration plans.
 
-**Status:** first local MVP checkpoint: create, list and select projects in React with PostgreSQL persistence. SQLAlchemy project/contract models, Alembic migrations, pgvector enablement, and database readiness are implemented. Contract uploads, comparison, RAG, agents, approvals, and MCP remain tracked implementation work. See the [step-by-step demo and review checkpoints](docs/mvp-steps.md).
+**Status:** project workspace plus validated contract-upload APIs. Create/list/select projects in React; upload immutable OpenAPI JSON/YAML versions through the API and read project-scoped contract metadata/specifications. See the [contract upload walkthrough](docs/contract-uploads.md). The React upload screen remains a design preview; comparison, RAG, agents, approvals, and MCP remain tracked implementation work. See the [step-by-step demo and review checkpoints](docs/mvp-steps.md).
 
 [Project and task tracker](https://github.com/users/r-kovalenko/projects/2) Â· [CI runs](https://github.com/r-kovalenko/api-contract-copilot/actions)
 

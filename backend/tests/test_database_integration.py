@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -20,6 +21,126 @@ from app.db.session import create_database_engine, session_scope
 from app.main import app
 
 pytestmark = pytest.mark.integration
+
+
+def test_contract_upload_versions_isolation_and_failures(migrated, monkeypatch):
+    monkeypatch.setattr("app.projects.get_engine", lambda: migrated)
+    specification = {
+        "openapi": "3.1.0",
+        "info": {"title": "Synthetic", "version": "1"},
+        "paths": {},
+    }
+    with TestClient(app) as client:
+        first = client.post("/api/projects", json={"name": "First"}).json()["id"]
+        second = client.post("/api/projects", json={"name": "Second"}).json()["id"]
+        url = f"/api/projects/{first}/contracts"
+        assert client.get(url).json() == []
+        created = client.post(
+            url,
+            params={"version": " v1 ", "source_name": "api-v1.json"},
+            content=json.dumps(specification),
+            headers={"Content-Type": "application/json"},
+        )
+        assert created.status_code == 201, created.text
+        metadata = created.json()
+        assert metadata["version"] == "v1"
+        assert metadata["source_name"] == "api-v1.json"
+        assert "specification" not in metadata
+        assert metadata["created_at"]
+        detail = client.get(f"{url}/{metadata['id']}").json()
+        assert detail["specification"] == specification
+        assert client.get(f"/api/projects/{second}/contracts/{metadata['id']}").status_code == 404
+        assert client.get(f"{url}/{uuid4()}").status_code == 404
+        assert client.post(f"{url}?version=v1", json=specification).status_code == 409
+        # Identical labels are independent in different projects.
+        assert (
+            client.post(
+                f"/api/projects/{second}/contracts?version=v1", json=specification
+            ).status_code
+            == 201
+        )
+        yaml_body = 'openapi: 3.0.3\ninfo:\n  title: Synthetic\n  version: "2"\npaths: {}\n'
+        candidate = client.post(
+            f"{url}?version=v2&source_name=api-v2.yaml",
+            content=yaml_body,
+            headers={"Content-Type": "application/yaml"},
+        )
+        assert candidate.status_code == 201, candidate.text
+        assert client.get(url, params={"limit": 1}).json() == [candidate.json()]
+        assert client.get(url, params={"limit": 1, "offset": 1}).json() == [metadata]
+        assert client.get(url, params={"limit": 101}).status_code == 422
+        assert client.get(f"/api/projects/{uuid4()}/contracts").status_code == 404
+        assert (
+            client.post(
+                f"/api/projects/{uuid4()}/contracts?version=v1", json=specification
+            ).status_code
+            == 404
+        )
+        assert client.post(f"{url}?version=bad", json={"openapi": "3.1.0"}).status_code == 422
+        assert (
+            client.post(
+                f"{url}?version=bad", content=yaml_body, headers={"Content-Type": "text/plain"}
+            ).status_code
+            == 415
+        )
+        assert (
+            client.post(f"{url}?version=bad&source_name=../x.json", json=specification).status_code
+            == 422
+        )
+        assert client.put(f"{url}/{metadata['id']}", json=specification).status_code == 405
+        assert len(client.get(url).json()) == 2
+        assert client.get(f"{url}/{metadata['id']}").json() == detail
+    with session_scope(migrated) as session:
+        assert len(session.scalars(select(ApiContract)).all()) == 3
+
+
+def test_simultaneous_duplicate_uploads_are_atomic(migrated, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr("app.projects.get_engine", lambda: migrated)
+    with TestClient(app) as client:
+        pid = client.post("/api/projects", json={"name": "Race test"}).json()["id"]
+
+    def upload_once():
+        with TestClient(app) as client:
+            return client.post(
+                f"/api/projects/{pid}/contracts?version=v1",
+                json={
+                    "openapi": "3.1.0",
+                    "info": {"title": "Synthetic", "version": "1"},
+                    "paths": {},
+                },
+            ).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(lambda _: upload_once(), range(2))) == [201, 409]
+    with session_scope(migrated) as session:
+        assert len(session.scalars(select(ApiContract)).all()) == 1
+
+
+def test_failed_contract_commit_rolls_back(migrated, monkeypatch):
+    from unittest.mock import patch
+
+    from sqlalchemy.exc import OperationalError
+
+    monkeypatch.setattr("app.projects.get_engine", lambda: migrated)
+    with TestClient(app) as client:
+        pid = client.post("/api/projects", json={"name": "Rollback test"}).json()["id"]
+        with patch(
+            "sqlalchemy.orm.Session.commit",
+            side_effect=OperationalError("private connection", {}, Exception("private password")),
+        ):
+            response = client.post(
+                f"/api/projects/{pid}/contracts?version=v1",
+                json={
+                    "openapi": "3.1.0",
+                    "info": {"title": "Synthetic", "version": "1"},
+                    "paths": {},
+                },
+            )
+        assert response.status_code == 503
+        assert "private" not in response.text
+        assert client.get(f"/api/projects/{pid}/contracts").json() == []
 
 
 def test_project_api_persists_lists_selects_and_paginates(migrated):
