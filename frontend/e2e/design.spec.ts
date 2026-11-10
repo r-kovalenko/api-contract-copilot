@@ -7,13 +7,9 @@ test.beforeEach(async ({ page }) => {
 test('design previews are labelled and navigation preserves project form state', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Project name', { exact: true }).fill('Keep my draft');
-  await page.getByRole('button', { name: 'Contracts Preview' }).click();
+  await page.getByRole('button', { name: 'Comparison Preview' }).click();
   await expect(page.getByText('Design preview', { exact: true })).toBeVisible();
   await expect(page.getByRole('main')).toBeFocused();
-  await page.getByLabel('Sample version').nth(1).selectOption('v1');
-  await expect(page.getByRole('button', { name: 'Explore sample comparison' })).toBeDisabled();
-  await page.getByLabel('Sample version').nth(1).selectOption('v2');
-  await page.getByRole('button', { name: 'Explore sample comparison' }).click();
   await expect(page.getByRole('heading', { name: 'See what changes.' })).toBeVisible();
   await page.getByRole('button', { name: /Optional locale field added/ }).click();
   await expect(page.getByRole('heading', { name: 'Optional locale field added' })).toBeVisible();
@@ -31,7 +27,7 @@ test('screens fit desktop and mobile and expose keyboard navigation', async ({ p
   await expect(page.getByRole('main')).toBeFocused();
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });
-    for (const [label, file] of [['Projects', 'projects'], ['Contracts Preview', 'contracts'], ['Comparison Preview', 'comparison'], ['Impact report Preview', 'report'], ['Components Preview', 'components']]) {
+    for (const [label, file] of [['Projects', 'projects'], ['Contracts', 'contracts'], ['Comparison Preview', 'comparison'], ['Impact report Preview', 'report'], ['Components Preview', 'components']]) {
       await page.getByRole('button', { name: label, exact: true }).click();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
       await page.screenshot({ path: `test-results/design-${file}-${width}.png`, fullPage: true });

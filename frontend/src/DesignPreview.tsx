@@ -8,25 +8,11 @@ const changes = [
   { id: 'customer-locale', method: 'GET', path: '/customers/{id}', title: 'Optional locale field added', detail: 'An optional response field provides the customer locale. Existing consumers can ignore it.', before: 'No locale field', after: 'locale?: string', severity: 'Compatible' },
 ] as const;
 
-export function DesignPreview({ screen, navigate }: { screen: Exclude<Screen, 'projects'>; navigate: (screen: Screen) => void }) {
+export function DesignPreview({ screen, navigate }: { screen: Exclude<Screen, 'projects' | 'contracts'>; navigate: (screen: Screen) => void }) {
   const [selected, setSelected] = useState(0);
-  const [baseline, setBaseline] = useState('v1');
-  const [candidate, setCandidate] = useState('v2');
   const change = changes[selected];
   return <>
     <div className="preview-banner"><Badge tone="warning">Design preview</Badge><span>Sample data · No files are uploaded and no analysis is executed.</span><Button variant="quiet" onClick={() => navigate('projects')}>Back to workspace</Button></div>
-    {screen === 'contracts' && <>
-      <PageHeader eyebrow="Customer API migration / Contracts" title="Give your change a baseline.">Choose the contract you use today and the version you want to adopt.</PageHeader>
-      <div className="two-column">
-        {[{ title: 'Baseline contract', value: baseline, set: setBaseline, label: 'Current integration', id: 'baseline' }, { title: 'Candidate contract', value: candidate, set: setCandidate, label: 'Proposed API version', id: 'candidate' }].map(item => <Panel key={item.id} aria-labelledby={`${item.id}-title`}>
-          <p className="eyebrow">{item.label}</p><h2 id={`${item.id}-title`}>{item.title}</h2>
-          <div className="upload-preview"><span className="file-symbol" aria-hidden="true">{'{ }'}</span><strong>OpenAPI contract</strong><p>JSON or YAML · OpenAPI 3.x</p><Badge>Upload planned</Badge></div>
-          <label htmlFor={item.id}>Sample version</label><select id={item.id} value={item.value} onChange={event => item.set(event.target.value)}><option value="v1">v1 · Customer API</option>{item.id === 'candidate' && <option value="v2">v2 · Customer API</option>}</select>
-          <p className="field-hint">This selector demonstrates the version-pair interaction.</p>
-        </Panel>)}
-      </div>
-      <div className="action-bar"><p>{baseline === candidate ? 'Choose two different versions to continue.' : `${baseline} → ${candidate} · Sample comparison ready to explore`}</p><Button disabled={baseline === candidate} onClick={() => { setSelected(0); navigate('comparison'); }}>Explore sample comparison →</Button></div>
-    </>}
     {screen === 'comparison' && <>
       <PageHeader eyebrow="Customer API migration / Comparison" title="See what changes.">A sample comparison of Customer API v1 → v2. Contract facts and interpretation have separate places.</PageHeader>
       <div className="summary-grid"><Panel><span className="metric">3</span><span>Sample changes</span></Panel><Panel><span className="metric danger-text">2</span><span>Breaking changes</span></Panel><Panel><span className="metric success-text">1</span><span>Compatible addition</span></Panel></div>

@@ -1,24 +1,28 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { createProject, listProjects, type Project } from './projects';
 import { DesignPreview, type Screen } from './DesignPreview';
+import { Contracts } from './ContractWorkspace';
 import { Shell } from './Shell';
 import { Badge, Button, EmptyState, Feedback, PageHeader, Panel } from './ui';
 
 export function App() {
+  const [selected, setSelected] = useState<Project | null>(null);
+  const [contractsVisited, setContractsVisited] = useState(false);
   const [screen, setScreen] = useState<Screen>('projects');
   function navigate(next: Screen) {
     setScreen(next);
+    if (next === 'contracts') setContractsVisited(true);
     requestAnimationFrame(() => document.getElementById('workspace-main')?.focus());
   }
   return <Shell screen={screen} navigate={navigate}>
-    <div hidden={screen !== 'projects'}><ProjectWorkspace /></div>
-    {screen !== 'projects' && <DesignPreview screen={screen} navigate={navigate} />}
+    <div hidden={screen !== 'projects'}><ProjectWorkspace selected={selected} setSelected={setSelected} openContracts={() => navigate('contracts')} /></div>
+    {selected && contractsVisited ? <div hidden={screen !== 'contracts'}><Contracts key={selected.id} project={selected} /></div> : screen === 'contracts' && <Panel><EmptyState title="Select a project first">Choose or create a project to upload its contracts.</EmptyState><Button onClick={() => navigate('projects')}>Choose a project</Button></Panel>}
+    {screen !== 'projects' && screen !== 'contracts' && <DesignPreview screen={screen} navigate={navigate} />}
   </Shell>;
 }
 
-function ProjectWorkspace() {
+function ProjectWorkspace({ selected, setSelected, openContracts }: { selected: Project | null; setSelected: (project: Project) => void; openContracts: () => void }) {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selected, setSelected] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -104,7 +108,7 @@ function ProjectWorkspace() {
       <p className="eyebrow">SELECTED PROJECT</p>
       <h2 id="selected-title">{selected.name}</h2>
       <p>{selected.description || 'Ready for your API contracts.'}</p>
-      <p><strong>Up next:</strong> upload your baseline and candidate OpenAPI versions. Contract upload will be added in Step 2.</p>
+      <p>Upload your baseline and candidate OpenAPI versions for this project.</p><Button onClick={openContracts}>Manage contracts</Button>
     </Panel>}
   </>;
 }

@@ -16,7 +16,7 @@ export function Shell({ screen, navigate, children }: { screen: Screen; navigate
       <a className="brand" href="#workspace-main" onClick={() => navigate('projects')}><span className="brand-mark" aria-hidden="true">{'{↗}'}</span><span>Contract<span className="brand-light">Copilot</span></span></a>
       <div className="workspace-label"><span className="workspace-avatar">L</span><div><strong>Local workspace</strong><small>API engineering</small></div></div>
       <p className="nav-label">WORKSPACE</p>
-      <nav aria-label="Main navigation">{navigation.map(item => <button key={item.id} aria-label={`${item.label}${item.id === 'projects' ? '' : ' Preview'}`} aria-current={screen === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}><span aria-hidden="true">{item.mark}</span>{item.label}{item.id !== 'projects' && <small>Preview</small>}</button>)}</nav>
+      <nav aria-label="Main navigation">{navigation.map(item => <button key={item.id} aria-label={`${item.label}${['projects', 'contracts'].includes(item.id) ? '' : ' Preview'}`} aria-current={screen === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}><span aria-hidden="true">{item.mark}</span>{item.label}{!['projects', 'contracts'].includes(item.id) && <small>Preview</small>}</button>)}</nav>
       <div className="sidebar-note"><span className="status-dot" />Single-user preview<p>Understand the change.<br />Keep the evidence.</p></div>
     </aside>
     <div className="app-body"><div className="topbar"><span>API Contract Copilot</span><Badge tone="info">MVP · Design checkpoint</Badge></div>

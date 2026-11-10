@@ -7,7 +7,7 @@ The repository contains the editable design source: React screens, shared compon
 | Screen | Purpose | Current behavior |
 | --- | --- | --- |
 | Projects | Create an integration workspace and select a saved project | Live project API and PostgreSQL persistence |
-| Contracts | Establish baseline and candidate versions | Labelled preview with sample selectors; no file upload |
+| Contracts | Establish baseline and candidate versions | Live JSON/YAML upload, saved metadata, project-scoped version selectors |
 | Comparison | Browse severity, operation and before/after detail | Interactive fixed Customer API v1 → v2 sample; no oasdiff call |
 | Impact report | Review impact, code evidence, sources, gaps and migration steps | Clearly illustrative report; no search, retrieval or model call |
 | Components | Review reusable component variants | Visual library, including empty, error, disabled and success states |
@@ -54,4 +54,4 @@ npx playwright install chromium
 npm run test:e2e -- e2e/design.spec.ts
 ```
 
-Design browser tests fake only the project list. They verify sample navigation, version-pair validation, keyboard focus, draft retention and overflow at 1440px/390px, and capture all five screens. The existing full-stack tests still exercise actual project creation against PostgreSQL in CI. Screenshots are retained in the browser-test-results artifact for visual review. This is not a complete accessibility audit.
+Design browser tests fake only the project list. They verify sample navigation, keyboard focus, draft retention and overflow at 1440px/390px, and capture all five screens. The full-stack tests exercise project creation, contract uploads, duplicate/invalid documents, persisted version selection, project isolation and responsive screenshots against PostgreSQL in CI. Screenshots are retained in the browser-test-results artifact for visual review. This is not a complete accessibility audit.
