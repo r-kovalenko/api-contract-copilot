@@ -30,3 +30,47 @@ test('load failure can be retried and failed saves preserve input', async ({ pag
   await expect(page.getByRole('alert')).toContainText('Project could not be saved');
   await expect(page.getByLabel('Project name', { exact: true })).toHaveValue('Retain my draft');
 });
+
+test('upload JSON and YAML, reject duplicates, reload and choose project-scoped versions', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('/');
+  await page.getByLabel('Project name', { exact: true }).fill('Upload walkthrough');
+  await page.getByRole('button', { name: 'Create project', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage contracts' }).click();
+  await expect(page.getByText('No contracts yet')).toBeVisible();
+  for (const [version, file] of [['v1', 'customer-v1.json'], ['v2', 'customer-v2.yaml']]) {
+    await page.getByLabel('Version label', { exact: true }).fill(version);
+    await page.getByLabel('OpenAPI file').setInputFiles(`../docs/examples/${file}`);
+    await page.getByRole('button', { name: 'Upload contract', exact: true }).click();
+    await expect(page.getByText(`Saved ${version}. This contract version is immutable.`)).toBeVisible({ timeout: 15_000 });
+  }
+  await page.getByLabel('Version label', { exact: true }).fill('v1');
+  await page.getByLabel('OpenAPI file').setInputFiles('../docs/examples/customer-v1.json');
+  await page.getByRole('button', { name: 'Upload contract', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('already exists', { timeout: 15_000 });
+  await page.getByLabel('Version label', { exact: true }).fill('bad');
+  await page.getByLabel('OpenAPI file').setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from('{}') });
+  await page.getByRole('button', { name: 'Upload contract', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Validation failed', { timeout: 15_000 });
+  await page.reload();
+  await page.getByRole('button', { name: /Upload walkthrough/ }).click();
+  await page.getByRole('button', { name: 'Manage contracts' }).click();
+  await expect(page.getByRole('region', { name: 'Saved versions' }).getByRole('listitem')).toHaveCount(2);
+  await page.getByLabel('Baseline version').selectOption({ label: 'v1 · customer-v1.json' });
+  await page.getByLabel('Candidate version').selectOption({ label: 'v1 · customer-v1.json' });
+  await expect(page.getByText('Choose two different versions.')).toBeVisible();
+  await page.getByLabel('Candidate version').selectOption({ label: 'v2 · customer-v2.yaml' });
+  await expect(page.getByText('v1 → v2 · Version pair ready.')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Compare contracts/ })).toBeDisabled();
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+    await page.screenshot({ path: `test-results/contracts-live-${width}.png`, fullPage: true });
+  }
+  await page.getByRole('button', { name: 'Projects', exact: true }).click();
+  await page.getByRole('button', { name: /Customer API migration/ }).click();
+  await page.getByRole('button', { name: 'Manage contracts' }).click();
+  await expect(page.getByText('No contracts yet')).toBeVisible();
+  await expect(page.getByLabel('Baseline version')).toHaveValue('');
+  await expect(page.getByLabel('Candidate version')).toHaveValue('');
+});

@@ -1,6 +1,6 @@
 # Contract upload API checkpoint
 
-Feature #2 completes the project and immutable contract-version API. The React Contracts screen remains a design preview until feature #3/#32 connects it to these endpoints. Comparison and analysis are not implemented by this checkpoint.
+Feature #2 completes the project and immutable contract-version API. The React Contracts screen connects to these endpoints; see the Step 2 browser walkthrough in [MVP checkpoints](mvp-steps.md). Comparison and analysis are not implemented by this checkpoint.
 
 ## Try it
 

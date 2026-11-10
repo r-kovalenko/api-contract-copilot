@@ -125,3 +125,11 @@ footer { padding: 0 40px 28px; color: var(--color-muted); font-size: .68rem; }
 @media (max-width: 850px) { .app-shell { flex-direction: column; }.sidebar { width: 100%; flex-basis: auto; padding: 18px; }.brand-light { display: inline; margin-left: 5px; }.workspace-label, .nav-label, .sidebar-note { display: none; }.sidebar nav { display: flex; flex-wrap: wrap; margin-top: 16px; }.sidebar nav button { flex: 1 1 130px; }.sidebar nav button small { display: none; }.topbar { padding: 16px 20px; }main { padding: 24px 20px; }footer { padding: 0 20px 24px; } }
 @media (max-width: 620px) { .workspace, .two-column, .report-grid aside { grid-template-columns: 1fr; }.summary-grid { gap: 8px; }.summary-grid .panel { flex-direction: column; gap: 6px; padding: 14px 8px; text-align: center; }.panel { padding: 20px; }.preview-banner { flex-wrap: wrap; }.preview-banner .button { margin-left: 0; }.action-bar { align-items: stretch; flex-direction: column; }.journey { gap: 12px; font-size: .65rem; }.code-evidence > div { flex-wrap: wrap; }.topbar { align-items: flex-start; }.topbar .badge { font-size: .58rem; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
+
+.contract-versions { list-style: none; padding: 0; max-height: 24rem; overflow: auto; }
+.contract-versions li { padding: 1rem 0; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
+.contract-versions .badge { margin-left: .75rem; }
+.contract-versions p { font-size: .875rem; }
+input[type="file"] { max-width: 100%; }
+
+.contract-pair { margin-top: 24px; }

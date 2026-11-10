@@ -2,7 +2,7 @@
 
 Analyze how OpenAPI contract changes affect consumer integrations, then produce evidence-backed impact reports and migration plans.
 
-**Status:** project workspace plus validated contract-upload APIs. Create/list/select projects in React; upload immutable OpenAPI JSON/YAML versions through the API and read project-scoped contract metadata/specifications. See the [contract upload walkthrough](docs/contract-uploads.md). The React upload screen remains a design preview; comparison, RAG, agents, approvals, and MCP remain tracked implementation work. See the [step-by-step demo and review checkpoints](docs/mvp-steps.md).
+**Status:** project workspace plus validated contract-upload APIs. Create/list/select projects in React; upload immutable OpenAPI JSON/YAML versions through the API and read project-scoped contract metadata/specifications. See the [contract upload walkthrough](docs/contract-uploads.md). The React Contracts screen uploads files, lists saved metadata and selects distinct baseline/candidate versions; comparison, RAG, agents, approvals, and MCP remain tracked implementation work. See the [step-by-step demo and review checkpoints](docs/mvp-steps.md).
 
 [Project and task tracker](https://github.com/users/r-kovalenko/projects/2) Â· [CI runs](https://github.com/r-kovalenko/api-contract-copilot/actions)
 
@@ -111,7 +111,7 @@ See [delivery details](docs/ci-cd.md), [contribution guidance](CONTRIBUTING.md),
 
 ## Requirements and architecture
 
-The [React design system](docs/design-system.md) includes shared components, color tokens, and responsive screens. Projects uses the real API; Contracts, Comparison, Impact Report, and Components are explicitly labelled sample previews for design review.
+The [React design system](docs/design-system.md) includes shared components, color tokens, and responsive screens. Projects and Contracts use the real API; Comparison, Impact Report, and Components are explicitly labelled sample previews for design review.
 
 [Product requirements](docs/prd.md) and [system design](docs/system-design.md) describe the target MVP. Deterministic tools supply contract facts and exact code evidence; RAG supplies contextual sources; LLMs interpret those inputs. The orchestrator owns persisted state and approval decisions.
 
