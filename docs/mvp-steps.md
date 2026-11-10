@@ -38,6 +38,8 @@ For development without rebuilding containers, run the backend as documented in 
 
 ## Step 1 API
 
+The project workspace also has React component tests in `frontend/src/App.component.test.tsx`, run by `npm test` and the existing PR CI job. They use synthetic HTTP responses with the real API client to verify creation and selection, loading/empty states, rejected saves with retained input, list retry, keyboard selection, escaped markup, and duplicate-submit prevention. These tests require no backend or credentials; the browser walkthrough remains the check against real persistence. This completes the component-test prerequisite in #31; live contract upload and version selection remain #32.
+
 - `POST /api/projects`: JSON `{ "name": "Customer API", "description": "Optional" }`; returns 201 with UUID and timestamp after the transaction commits.
 - `GET /api/projects?offset=0&limit=20`: newest-first list, stable UUID tie-breaker, limit 1–100.
 - `GET /api/projects/{id}`: project detail or 404.
