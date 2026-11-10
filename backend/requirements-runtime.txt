@@ -23,7 +23,7 @@ certifi==2026.10.23
     # via
     #   httpcore
     #   httpx
-click==8.5.0
+click==8.5.1
     # via uvicorn
 fastapi==0.162.0
     # via api-contract-copilot (backend/pyproject.toml)
@@ -65,17 +65,17 @@ opentelemetry-api==1.45.2
     # via fastapi
 pathable==0.6.0
     # via jsonschema-path
-psycopg==3.3.7
+psycopg==3.3.8
     # via api-contract-copilot (backend/pyproject.toml)
-psycopg-binary==3.3.7
+psycopg-binary==3.3.8
     # via psycopg
-pydantic==2.14.2
+pydantic==2.14.3
     # via
     #   fastapi
     #   openapi-schema-validator
     #   openapi-spec-validator
     #   pydantic-settings
-pydantic-core==2.50.2
+pydantic-core==2.50.4
     # via pydantic
 pydantic-settings==2.16.2
     # via
@@ -101,7 +101,7 @@ rpds-py==2026.9.1
     #   referencing
 six==1.17.0
     # via rfc3339-validator
-sqlalchemy==2.1.6
+sqlalchemy==2.1.8
     # via
     #   alembic
     #   api-contract-copilot (backend/pyproject.toml)
@@ -121,7 +121,7 @@ typing-extensions==4.16.0
     #   sqlalchemy
     #   starlette
     #   typing-inspection
-typing-inspection==0.4.4
+typing-inspection==0.4.5
     # via
     #   fastapi
     #   pydantic
