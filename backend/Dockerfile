@@ -2,6 +2,9 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY requirements-runtime.txt ./
 RUN pip install --no-cache-dir -r requirements-runtime.txt
+COPY app/oasdiff_pin.py ./app/oasdiff_pin.py
+COPY install_oasdiff.py ./
+RUN python install_oasdiff.py
 COPY app ./app
 COPY alembic.ini ./
 COPY alembic ./alembic

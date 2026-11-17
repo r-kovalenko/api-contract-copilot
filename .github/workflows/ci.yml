@@ -48,6 +48,8 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
       - run: python -m pip install -r requirements-dev.txt
+      - name: Install checksum-pinned oasdiff for real comparison tests
+        run: python install_oasdiff.py
       - name: Build Python wheel in an isolated build environment
         run: python -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/wheels" .
       - run: python -m pytest ../scripts/test_check_environment.py
