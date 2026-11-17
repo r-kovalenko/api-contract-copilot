@@ -23,6 +23,8 @@ test('operational errors and incomplete reports fail closed', () => {
   }
   assert.throws(() => assess(report(), 2));
   const value = report(); value.vulnerabilities = {};
+  assert.throws(() => assess(value, 0));
+  value.metadata.vulnerabilities = {};
   assert.throws(() => assess(value, 1));
   assert.deepEqual(assess(value, 0), []);
 });

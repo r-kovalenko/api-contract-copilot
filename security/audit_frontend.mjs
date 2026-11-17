@@ -10,6 +10,13 @@ export function assess(report, status, production = false, today = new Date().to
       !report.vulnerabilities || !report.metadata?.dependencies?.total ||
       !report.metadata?.vulnerabilities) throw new Error('Incomplete npm audit report');
   const findings = report.vulnerabilities;
+  if (Array.isArray(findings) || typeof findings !== 'object') throw new Error('Invalid findings');
+  for (const severity of ['info', 'low', 'moderate', 'high', 'critical']) {
+    const count = report.metadata.vulnerabilities[severity] ?? 0;
+    if (!Number.isInteger(count) || count < 0 || count !== Object.values(findings).filter(item => item?.severity === severity).length) {
+      throw new Error('Inconsistent audit summary');
+    }
+  }
   const allowed = (name, seen = new Set()) => {
     const item = findings[name];
     if (!item || seen.has(name) || !Array.isArray(item.via) || !item.via.length) return false;
