@@ -316,3 +316,159 @@ def test_documented_migration_cli_uses_environment_configuration(engine):
             check=False,
         )
         assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.fixture
+def comparison_client(migrated, monkeypatch):
+    monkeypatch.setattr("app.projects.get_engine", lambda: migrated)
+    with TestClient(app) as client:
+        pid = client.post("/api/projects", json={"name": "Comparison"}).json()["id"]
+        ids = []
+        for version in ("v1", "v2"):
+            spec = {
+                "openapi": "3.0.3",
+                "info": {"title": "Synthetic", "version": version},
+                "paths": {"/customers": {"get": {"responses": {"200": {"description": "OK"}}}}}
+                if version == "v1"
+                else {},
+            }
+            uploaded = client.post(f"/api/projects/{pid}/contracts?version={version}", json=spec)
+            assert uploaded.status_code == 201, uploaded.text
+            ids.append(uploaded.json()["id"])
+        yield client, pid, {"baseline_id": ids[0], "candidate_id": ids[1]}
+
+
+def test_saved_comparison_roundtrip_and_isolation(comparison_client, monkeypatch):
+    client, pid, pair = comparison_client
+    url = f"/api/projects/{pid}/comparisons"
+    created = client.post(url, json=pair)
+    assert created.status_code == 201, created.text
+    saved = created.json()
+    assert saved["change_count"] > 0
+    assert any(c["severity"] == "breaking" for c in saved["result"]["changes"])
+    reverse = client.post(
+        url, json={"baseline_id": pair["candidate_id"], "candidate_id": pair["baseline_id"]}
+    )
+    assert reverse.status_code == 201, reverse.text
+    assert reverse.json()["id"] != saved["id"]
+
+    def unexpected(*args):
+        pytest.fail("Cached comparisons must not execute the engine")
+
+    monkeypatch.setattr("app.comparison_service.compare_contracts", unexpected)
+    cached = client.post(url, json=pair)
+    assert cached.status_code == 200
+    assert cached.json() == saved
+    assert client.get(f"{url}/{saved['id']}").json() == saved
+    change = saved["result"]["changes"][0]
+    assert client.get(f"{url}/{saved['id']}/changes/{change['id']}").json() == change
+    assert client.get(f"{url}/{saved['id']}/changes/{'0' * 64}").status_code == 404
+    listing = client.get(url, params={"limit": 1, "offset": 1}).json()
+    assert listing[0]["id"] == saved["id"]
+    assert "result" not in listing[0]
+    assert client.get(url, params={"limit": 101}).status_code == 422
+    other = client.post("/api/projects", json={"name": "Other"}).json()["id"]
+    other_url = f"/api/projects/{other}/comparisons"
+    assert client.post(other_url, json=pair).status_code == 404
+    assert client.get(f"{other_url}/{saved['id']}").status_code == 404
+    assert client.get(f"{other_url}/{saved['id']}/changes/{change['id']}").status_code == 404
+    assert client.post(url, json=pair | {"candidate_id": pair["baseline_id"]}).status_code == 422
+    assert client.post(url, json=pair | {"candidate_id": str(uuid4())}).status_code == 404
+    assert client.post(url, json=pair | {"command": "ignored"}).status_code == 422
+    assert client.get(f"/api/projects/{uuid4()}/comparisons").status_code == 404
+
+
+@pytest.mark.parametrize(
+    "code,status", [("timeout", 504), ("busy", 503), ("engine_failed", 503), ("invalid_input", 422)]
+)
+def test_failed_comparison_has_no_partial_record(comparison_client, monkeypatch, code, status):
+    from app.comparison import ComparisonError
+
+    client, pid, pair = comparison_client
+
+    def fail(*args):
+        raise ComparisonError(code)
+
+    monkeypatch.setattr("app.comparison_service.compare_contracts", fail)
+    url = f"/api/projects/{pid}/comparisons"
+    response = client.post(url, json=pair)
+    assert response.status_code == status
+    assert response.json()["detail"]["code"] == code
+    assert client.get(url).json() == []
+
+
+def test_comparison_commit_failure_rolls_back(comparison_client, monkeypatch):
+    from unittest.mock import patch
+
+    from sqlalchemy.exc import OperationalError
+
+    client, pid, pair = comparison_client
+    url = f"/api/projects/{pid}/comparisons"
+    with patch(
+        "sqlalchemy.orm.Session.commit",
+        side_effect=OperationalError("private", {}, Exception("private")),
+    ):
+        response = client.post(url, json=pair)
+    assert response.status_code == 503
+    assert "private" not in response.text
+    assert client.get(url).json() == []
+
+
+def test_comparison_race_reuses_one_record(comparison_client, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from app.comparison import compare_contracts
+
+    client, pid, pair = comparison_client
+    barrier = Barrier(2)
+
+    def synchronized(*args):
+        result = compare_contracts(*args)
+        barrier.wait(timeout=15)
+        return result
+
+    monkeypatch.setattr("app.comparison_service.compare_contracts", synchronized)
+    url = f"/api/projects/{pid}/comparisons"
+
+    def create_once(_):
+        with TestClient(app) as concurrent_client:
+            return concurrent_client.post(url, json=pair)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(create_once, range(2)))
+    assert sorted(r.status_code for r in responses) == [200, 201], [r.text for r in responses]
+    assert responses[0].json() == responses[1].json()
+    assert len(client.get(url).json()) == 1
+
+
+def test_comparison_downgrade_preserves_contracts(comparison_client, migrated):
+    client, pid, pair = comparison_client
+    assert client.post(f"/api/projects/{pid}/comparisons", json=pair).status_code == 201
+    migrate(migrated, "downgrade", "0001_projects_contracts")
+    with migrated.connect() as conn:
+        assert conn.scalar(text("SELECT count(*) FROM api_contracts")) == 2
+        assert conn.scalar(text("SELECT count(*) FROM projects")) == 1
+    migrate(migrated, "upgrade", "head")
+    assert client.get(f"/api/projects/{pid}/comparisons").json() == []
+
+
+def test_comparison_foreign_keys_enforce_project_boundary(comparison_client, migrated):
+    from uuid import UUID
+
+    from app.db.models import ContractComparison
+
+    client, pid, pair = comparison_client
+    other = client.post("/api/projects", json={"name": "Other"}).json()["id"]
+    with pytest.raises(IntegrityError), session_scope(migrated) as session:
+        session.add(
+            ContractComparison(
+                project_id=UUID(other),
+                baseline_id=UUID(pair["baseline_id"]),
+                candidate_id=UUID(pair["candidate_id"]),
+                engine_version="test",
+                normalization_version=1,
+                change_count=0,
+                result={},
+            )
+        )
