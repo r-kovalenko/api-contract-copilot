@@ -2,7 +2,7 @@
 
 Analyze how OpenAPI contract changes affect consumer integrations, then produce evidence-backed impact reports and migration plans.
 
-**Status:** project workspace plus validated contract-upload APIs. Create/list/select projects in React; upload immutable OpenAPI JSON/YAML versions through the API and read project-scoped contract metadata/specifications. See the [contract upload walkthrough](docs/contract-uploads.md). The React Contracts screen uploads files, lists saved metadata and selects distinct baseline/candidate versions; comparison, RAG, agents, approvals, and MCP remain tracked implementation work. See the [step-by-step demo and review checkpoints](docs/mvp-steps.md).
+**Status:** project workspace plus validated contract-upload APIs. Create/list/select projects in React; upload immutable OpenAPI JSON/YAML versions through the API and read project-scoped contract metadata/specifications. See the [contract upload walkthrough](docs/contract-uploads.md). The React Contracts screen uploads files, lists saved metadata and selects distinct baseline/candidate versions; a [pinned comparison runner](docs/contract-comparison.md) is available as a backend demo. Comparison persistence/API/UI, RAG, agents, approvals, and MCP remain tracked implementation work. See the [step-by-step demo and review checkpoints](docs/mvp-steps.md).
 
 [Project and task tracker](https://github.com/users/r-kovalenko/projects/2) Â· [CI runs](https://github.com/r-kovalenko/api-contract-copilot/actions)
 
@@ -95,6 +95,7 @@ Planned models from the [system design](docs/system-design.md) are intentionally
 cd backend
 python -m ruff check .
 python -m ruff format --check .
+python install_oasdiff.py
 python -m pytest --cov=app
 cd ../frontend
 npm ci

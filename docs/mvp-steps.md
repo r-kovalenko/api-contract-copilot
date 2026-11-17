@@ -57,3 +57,7 @@ Names are trimmed and limited to 1–200 characters; descriptions to 2,000 chara
 Saved metadata is loaded 20 versions at a time; **Load more versions** makes older entries selectable. Failed list requests offer retry. A timeout/network failure can occur after a server save: use **Refresh versions** before retrying. Cancelling a browser request does not roll back a server transaction. No automatic upload retries are performed.
 
 Component and client tests use fake HTTP responses. The real-backend browser walkthrough uploads both fixture formats, verifies duplicate/invalid rejection, reloads persisted versions, checks project isolation, and captures desktop/mobile screenshots. Existing PR CI runs all these tests. This remains a local single-user preview without authentication.
+
+## Step 3 runner checkpoint
+
+The [oasdiff runner demo](contract-comparison.md) implements #33 with pinned real-engine fixtures and bounded subprocess execution. Run `python backend/demo_comparison.py` after installing the binary to inspect deterministic changes in the synthetic contracts. This is a backend checkpoint; project-scoped comparison persistence/API (#34) and the live comparison screen remain pending.
