@@ -18,6 +18,7 @@ from app.oasdiff_pin import PINS, VERSION, binary_path, platform_key
 TIMEOUT_SECONDS = 10
 MAX_OUTPUT_BYTES = 2 * 1024 * 1024
 MAX_CHANGES = 2000
+NORMALIZATION_VERSION = 1
 _slots = threading.BoundedSemaphore(2)
 
 
@@ -79,7 +80,7 @@ class ComparisonResult(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     engine: Literal["oasdiff"] = "oasdiff"
     engine_version: str = VERSION
-    normalization_version: int = 1
+    normalization_version: int = NORMALIZATION_VERSION
     baseline_sha256: str
     candidate_sha256: str
     changes: list[ContractChange]
@@ -216,7 +217,15 @@ def normalize(raw: bytes) -> list[ContractChange]:
                 raise ValueError
             # Ignore temporary locations/order; retain the engine's field-specific fingerprint.
             identity = json.dumps(
-                [VERSION, 1, item.id, item.operation, item.path, item.section, item.fingerprint],
+                [
+                    VERSION,
+                    NORMALIZATION_VERSION,
+                    item.id,
+                    item.operation,
+                    item.path,
+                    item.section,
+                    item.fingerprint,
+                ],
                 ensure_ascii=False,
             )
             change_id = hashlib.sha256(identity.encode("utf-8")).hexdigest()

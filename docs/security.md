@@ -45,3 +45,11 @@ Python audits run on all three lockfiles, including scanner dependencies. Scanne
 Each audit subprocess is limited to 180 seconds and individual service requests to 30 seconds; the job's 20-minute limit is the final bound. Gitleaks downloads have bounded retries/timeouts and still require the exact checksum. The scan itself is not retried or suppressed. Frontend registry requests also have bounded retries; the high-severity audit threshold is unchanged. Unit tests exercise clean results, findings, temporary/permanent outages, malformed/skipped reports, and timeout recovery without network access.
 
 Dependabot checks Python dependencies daily and groups minor/patch updates for review. CodeQL init/analyze updates are grouped so they stay aligned. These settings do not auto-merge updates. New advisories legitimately turn a previously green build red: inspect the JSON reports, patch affected lockfiles, and merge a green PR. Scheduled runs use main, so an unmerged fix cannot repair scheduled main-branch checks. Never bypass a finding or treat an unavailable advisory service as a clean scan.
+
+## Temporary frontend development dependency exception
+
+Owner: r-kovalenko. Authorized in the project chat on 2026-11-17 to relax the failing security check. Expires **2026-12-01 (UTC)**, when the finding automatically blocks again.
+
+Only `GHSA-fc5q-39xc-vjpf` for picomatch and dependency findings caused exclusively by that advisory are temporarily nonblocking in the full frontend audit. Production dependencies are audited separately with no exception. Other high/critical advisories, unknown/malformed audit results, command failures and timeouts still block. Raw reports are retained as CI artifacts for seven days. Secret scanning, Python checks and CodeQL are unchanged.
+
+Rationale: the latest picomatch release is affected with no published fix, blocking the local MVP's development toolchain. This accepts residual regular-expression denial-of-service risk in build/test tools; do not pass untrusted glob patterns to them or expose the development server publicly. This exception does not repair the vulnerable dependency. Remove it as soon as a patched release is available, update the lockfile, and rerun CI. Source: https://github.com/advisories/GHSA-fc5q-39xc-vjpf

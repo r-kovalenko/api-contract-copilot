@@ -60,4 +60,8 @@ Component and client tests use fake HTTP responses. The real-backend browser wal
 
 ## Step 3 runner checkpoint
 
-The [oasdiff runner demo](contract-comparison.md) implements #33 with pinned real-engine fixtures and bounded subprocess execution. Run `python backend/demo_comparison.py` after installing the binary to inspect deterministic changes in the synthetic contracts. This is a backend checkpoint; project-scoped comparison persistence/API (#34) and the live comparison screen remain pending.
+The [oasdiff runner demo](contract-comparison.md) implements #33 with pinned real-engine fixtures and bounded subprocess execution. Run `python backend/demo_comparison.py` after installing the binary to inspect deterministic changes in the synthetic contracts. This is a backend checkpoint; project-scoped comparison persistence/API (#34) is now available for review through the walkthrough below. The live comparison screen remains pending.
+
+## Step 3 saved comparison API checkpoint
+
+Apply `alembic upgrade head`, upload two synthetic versions, and use the [saved comparison API walkthrough](contract-comparison.md#saved-comparison-api). Verify repeat POST returns the same result, reverse the pair to see directional changes, then retrieve a saved change by ID. This checkpoint uses PostgreSQL and the real pinned engine without an LLM or credentials. The React Compare button remains disabled until its separate integration step.

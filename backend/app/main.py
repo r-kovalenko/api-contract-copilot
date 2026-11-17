@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.comparisons import router as comparisons_router
 from app.contracts import router as contracts_router
 from app.db.readiness import database_ready
 from app.db.session import get_engine
@@ -12,6 +13,7 @@ app = FastAPI(title="API Contract Copilot", version="0.1.0")
 app.add_middleware(ProjectBodyLimit)
 app.include_router(router)
 app.include_router(contracts_router)
+app.include_router(comparisons_router)
 
 
 class HealthResponse(BaseModel):

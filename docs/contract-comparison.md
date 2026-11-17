@@ -1,6 +1,6 @@
 # Deterministic comparison runner — #33
 
-The backend now has a callable `app.comparison.compare_contracts(baseline, candidate)` service and a synthetic command-line demo. It accepts **already validated specification dictionaries**, such as the immutable contract records saved by the upload API. It returns typed deterministic evidence without a model call. Persistence, project-scoped HTTP routes (#34), and live comparison UI are still pending; the browser Compare button remains disabled.
+The backend now has a callable `app.comparison.compare_contracts(baseline, candidate)` service and a synthetic command-line demo. It accepts **already validated specification dictionaries**, such as the immutable contract records saved by the upload API. It returns typed deterministic evidence without a model call. Persistence and project-scoped HTTP routes (#34) are implemented below. Live comparison UI remains pending; the browser Compare button remains disabled.
 
 ## Run the checkpoint
 
@@ -47,3 +47,17 @@ The [upstream changelog semantics](https://github.com/oasdiff/oasdiff/blob/v1.37
 - Go gets `GOMAXPROCS=2` and a 128 MiB soft memory target. This is **not a hard OS memory sandbox**; deployment must provide container memory/CPU limits before handling untrusted public traffic. The application remains local and single-user.
 
 `ComparisonError.code` is one of `invalid_input`, `engine_unavailable`, `engine_checksum_mismatch`, `busy`, `timeout`, `output_limit`, `engine_failed`, or `invalid_output`. Failures never become an empty successful comparison. There is no automatic retry. CI includes real subprocess timeout/stdout/stderr overflow tests, modified-binary rejection, and installer checksum/archive tests using synthetic data.
+
+## Saved comparison API
+
+Apply `python -m alembic upgrade head` from `backend/` (or the equivalent Compose command). Install the pinned engine with `python install_oasdiff.py` when running outside the supplied container. Upload two versions in the same project using the Contracts screen or upload API, then open the local backend `/docs` to try:
+
+1. `POST /api/projects/{project_id}/comparisons` with JSON `{"baseline_id":"<old-contract-uuid>","candidate_id":"<new-contract-uuid>"}`. New results return 201 after commit.
+2. Repeat the request: 200 returns the same saved ID, timestamp and result without rerunning the engine. Order matters: reversing the pair creates a separate comparison. Engine/normalization versions are part of the uniqueness key, so a future version can create a new result.
+3. `GET /api/projects/{project_id}/comparisons?offset=0&limit=20` lists newest-first metadata only (limit 1–100, offset 0–100000).
+4. `GET /api/projects/{project_id}/comparisons/{comparison_id}` retrieves the full saved normalized result, including canonical document hashes, version IDs and engine evidence.
+5. `GET /api/projects/{project_id}/comparisons/{comparison_id}/changes/{change_id}` returns one saved change by its stable 64-character ID.
+
+Requests accept only the two UUID fields and are limited to 16 KiB before JSON parsing. Identical version IDs return 422; missing or wrong-project objects return 404. Invalid engine input returns 422, timeout 504, and busy/unavailable/failed engine or database storage returns 503. Engine errors include a safe code; raw stderr and database connection details are never returned. Failed work leaves no comparison record. Concurrent successful requests for the same ordered pair converge on one database record; duplicate engine execution may occur before one insert wins.
+
+Results are immutable snapshots with up to 2,000 normalized changes; evidence source locations refer to canonical engine inputs rather than original YAML line numbers. The existing engine execution/output limits remain enforced. Only complete results are persisted, with database foreign keys enforcing project membership for both versions. No LLM or outbound provider is used. The React comparison/report screens remain previews; this API checkpoint is local and single-user, without authentication or public-hosting support.
