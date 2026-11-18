@@ -133,3 +133,9 @@ footer { padding: 0 40px 28px; color: var(--color-muted); font-size: .68rem; }
 input[type="file"] { max-width: 100%; }
 
 .contract-pair { margin-top: 24px; }
+
+.comparison-provenance, .project span, .change-option { overflow-wrap: anywhere; }
+.comparison-provenance code { white-space: normal; }
+
+.comparison-history .panel-heading, .comparison-history .pagination { flex-wrap: wrap; }
+.change-list, .change-option { min-width: 0; }

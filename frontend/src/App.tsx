@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { createProject, listProjects, type Project } from './projects';
 import { DesignPreview, type Screen } from './DesignPreview';
 import { Contracts } from './ContractWorkspace';
+import { ComparisonWorkspace } from './ComparisonWorkspace';
+import { type Comparison } from './comparisons';
 import { Shell } from './Shell';
 import { Badge, Button, EmptyState, Feedback, PageHeader, Panel } from './ui';
 
@@ -16,9 +18,19 @@ export function App() {
   }
   return <Shell screen={screen} navigate={navigate}>
     <div hidden={screen !== 'projects'}><ProjectWorkspace selected={selected} setSelected={setSelected} openContracts={() => navigate('contracts')} /></div>
-    {selected && contractsVisited ? <div hidden={screen !== 'contracts'}><Contracts key={selected.id} project={selected} /></div> : screen === 'contracts' && <Panel><EmptyState title="Select a project first">Choose or create a project to upload its contracts.</EmptyState><Button onClick={() => navigate('projects')}>Choose a project</Button></Panel>}
-    {screen !== 'projects' && screen !== 'contracts' && <DesignPreview screen={screen} navigate={navigate} />}
+    {selected ? <ProjectScreens key={selected.id} project={selected} screen={screen} contractsVisited={contractsVisited} navigate={navigate} /> : (screen === 'contracts' || screen === 'comparison') && <Panel><EmptyState title="Select a project first">Choose or create a project to work with its contracts and comparisons.</EmptyState><Button onClick={() => navigate('projects')}>Choose a project</Button></Panel>}
+    {(screen === 'report' || screen === 'components') && <DesignPreview screen={screen} navigate={navigate} />}
   </Shell>;
+}
+
+function ProjectScreens({ project, screen, contractsVisited, navigate }: { project: Project; screen: Screen; contractsVisited: boolean; navigate: (screen: Screen) => void }) {
+  const [latest, setLatest] = useState<Comparison | null>(null);
+  const [visited, setVisited] = useState(false);
+  useEffect(() => { if (screen === 'comparison') setVisited(true); }, [screen]);
+  return <>
+    {contractsVisited && <div hidden={screen !== 'contracts'}><Contracts project={project} onCompared={result => { setLatest(result); navigate('comparison'); }} /></div>}
+    {(visited || screen === 'comparison') && <div hidden={screen !== 'comparison'}><ComparisonWorkspace project={project} latest={latest} openContracts={() => navigate('contracts')} /></div>}
+  </>;
 }
 
 function ProjectWorkspace({ selected, setSelected, openContracts }: { selected: Project | null; setSelected: (project: Project) => void; openContracts: () => void }) {

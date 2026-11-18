@@ -33,7 +33,7 @@ it('uploads a file, refreshes metadata and selects only a distinct pair', async 
   expect((screen.getByRole('button', { name: /Compare contracts/ }) as HTMLButtonElement).disabled).toBe(true);
   await user.selectOptions(screen.getByLabelText('Candidate version'), 'v2');
   expect(screen.getByText('v1 → v2 · Version pair ready.')).toBeTruthy();
-  expect((screen.getByRole('button', { name: /Compare contracts/ }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole('button', { name: /Compare contracts/ }) as HTMLButtonElement).disabled).toBe(false);
 });
 
 it.each([409, 422])('retains a rejected upload and safely renders validation (%s)', async status => {

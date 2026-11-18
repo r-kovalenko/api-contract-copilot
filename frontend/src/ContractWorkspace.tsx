@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { listContracts, uploadContract, validateFile, type Contract } from './contracts';
+import { comparisonError, createComparison, type Comparison } from './comparisons';
 import { type Project } from './projects';
 import { Badge, Button, EmptyState, Feedback, PageHeader, Panel } from './ui';
 
 // The parent keys this workspace by project ID: drafts, requests and selections never cross projects.
-export function Contracts({ project }: { project: Project }) {
+export function Contracts({ project, onCompared }: { project: Project; onCompared?: (result: Comparison) => void }) {
+  const [comparing, setComparing] = useState(false);
+  const [compareError, setCompareError] = useState('');
+  const comparisonRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => comparisonRequest.current?.abort(), []);
   const [versions, setVersions] = useState<Contract[]>([]);
   const [offset, setOffset] = useState(0);
   const [revision, setRevision] = useState(0);
@@ -63,6 +68,16 @@ export function Contracts({ project }: { project: Project }) {
   const selectedBaseline = versions.find(item => item.id === baseline);
   const selectedCandidate = versions.find(item => item.id === candidate);
   const validPair = !!selectedBaseline && !!selectedCandidate && baseline !== candidate && !loading && !error && !saving;
+  async function compare() {
+    if (!validPair || comparisonRequest.current) return;
+    const controller = new AbortController(); comparisonRequest.current = controller;
+    setComparing(true); setCompareError('');
+    try {
+      const result = await createComparison(project.id, baseline, candidate, controller.signal);
+      if (!controller.signal.aborted) onCompared?.(result);
+    } catch (cause) { if (!controller.signal.aborted) setCompareError(comparisonError(cause)); }
+    finally { if (!controller.signal.aborted) setComparing(false); comparisonRequest.current = null; }
+  }
   const fileError = file ? validateFile(file) : '';
   return <>
     <PageHeader eyebrow={`${project.name} / CONTRACTS`} title="Give your change a baseline." action={<Badge tone="success">Contracts · Live feature</Badge>}>Upload two OpenAPI versions, then choose the current and proposed contracts.</PageHeader>
@@ -71,31 +86,32 @@ export function Contracts({ project }: { project: Project }) {
         <p>JSON or YAML · OpenAPI 3.0–3.2 · Maximum 1 MiB</p>
         <form onSubmit={submit}>
           <label htmlFor="contract-version">Version label</label>
-          <input id="contract-version" required maxLength={100} value={version} disabled={saving} onChange={event => setVersion(event.target.value)} placeholder="v1" />
+          <input id="contract-version" required maxLength={100} value={version} disabled={saving || comparing} onChange={event => setVersion(event.target.value)} placeholder="v1" />
           <label htmlFor="contract-file">OpenAPI file</label>
-          <input ref={fileInput} id="contract-file" type="file" required accept=".json,.yaml,.yml" disabled={saving} aria-describedby="file-help" onChange={event => { setFile(event.target.files?.[0] ?? null); setUploadError(''); setNotice(''); }} />
+          <input ref={fileInput} id="contract-file" type="file" required accept=".json,.yaml,.yml" disabled={saving || comparing} aria-describedby="file-help" onChange={event => { setFile(event.target.files?.[0] ?? null); setUploadError(''); setNotice(''); }} />
           <p id="file-help" className="field-hint">Each version label is unique within this project. Saved versions cannot be overwritten.</p>
           {fileError && <Feedback tone="error">{fileError}</Feedback>}
-          <Button type="submit" disabled={saving || !file || !!fileError || !version.trim()}>{saving ? 'Validating and saving…' : 'Upload contract'}</Button>
+          <Button type="submit" disabled={saving || comparing || !file || !!fileError || !version.trim()}>{saving ? 'Validating and saving…' : 'Upload contract'}</Button>
           {uploadError && <Feedback tone="error">{uploadError}</Feedback>}
           {notice && <Feedback tone="success">{notice}</Feedback>}
         </form>
       </Panel>
-      <Panel aria-labelledby="versions-title" aria-busy={loading}><div className="panel-heading"><h2 id="versions-title">Saved versions</h2><Button variant="quiet" disabled={loading || saving} onClick={refresh}>Refresh versions</Button></div>
+      <Panel aria-labelledby="versions-title" aria-busy={loading}><div className="panel-heading"><h2 id="versions-title">Saved versions</h2><Button variant="quiet" disabled={loading || saving || comparing} onClick={refresh}>Refresh versions</Button></div>
         {loading && <Feedback>Loading versions…</Feedback>}
         {error && <><Feedback tone="error">{error}</Feedback><Button variant="secondary" onClick={() => setRevision(value => value + 1)}>Retry versions</Button></>}
         {!loading && !error && versions.length === 0 && <EmptyState title="No contracts yet">Upload your baseline to get started.</EmptyState>}
         <ul className="contract-versions">{versions.map(item => <li key={item.id}><strong>{item.version}</strong><Badge>OpenAPI {item.openapi_version}</Badge><p>{item.source_name || 'Unnamed source'} · <time dateTime={item.created_at}>{new Date(item.created_at).toLocaleString()}</time></p></li>)}</ul>
-        {more && <Button variant="secondary" disabled={loading || !!error || saving} onClick={() => setOffset(value => value + 20)}>Load more versions</Button>}
+        {more && <Button variant="secondary" disabled={loading || !!error || saving || comparing} onClick={() => setOffset(value => value + 20)}>Load more versions</Button>}
       </Panel>
     </div>
     <Panel className="contract-pair" aria-labelledby="pair-title"><h2 id="pair-title">Choose versions</h2><div className="two-column">
       {[{ id: 'baseline', title: 'Baseline version', value: baseline, set: setBaseline }, { id: 'candidate', title: 'Candidate version', value: candidate, set: setCandidate }].map(item => <div key={item.id}>
-        <label htmlFor={item.id}>{item.title}</label><select id={item.id} value={item.value} disabled={loading || !!error || saving} onChange={event => item.set(event.target.value)}><option value="">Select a version</option>{versions.map(contract => <option key={contract.id} value={contract.id}>{contract.version} · {contract.source_name || 'Unnamed source'}</option>)}</select>
+        <label htmlFor={item.id}>{item.title}</label><select id={item.id} value={item.value} disabled={loading || !!error || saving || comparing} onChange={event => item.set(event.target.value)}><option value="">Select a version</option>{versions.map(contract => <option key={contract.id} value={contract.id}>{contract.version} · {contract.source_name || 'Unnamed source'}</option>)}</select>
       </div>)}
     </div>
     <Feedback>{baseline && baseline === candidate ? 'Choose two different versions.' : validPair ? `${selectedBaseline.version} → ${selectedCandidate.version} · Version pair ready.` : 'Select a baseline and a different candidate from this project.'}</Feedback>
-    <div className="action-bar"><p id="comparison-help">Comparison execution is coming in the next milestone. Your selection stays available while you navigate this workspace.</p><Button disabled aria-describedby="comparison-help">Compare contracts (coming soon)</Button></div>
+    {compareError && <Feedback tone="error">{compareError}</Feedback>}
+    <div className="action-bar"><p id="comparison-help">Compare the baseline to the candidate. Repeated pairs reuse their saved result.</p><Button disabled={!validPair || comparing} aria-describedby="comparison-help" onClick={compare}>{comparing ? 'Comparing…' : 'Compare contracts'}</Button></div>
     </Panel>
   </>;
 }

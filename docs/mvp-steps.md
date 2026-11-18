@@ -11,7 +11,7 @@ Work one demoable step at a time and pause for owner review after each step. A c
 
 Step 4 is the first end-to-end MVP preview. Migration planning, persisted agent conversations, approval, MCP, richer RAG and observability follow the PRD implementation order after that preview is accepted.
 
-Step 2 backend checkpoint: project-scoped JSON/YAML uploads, schema validation and immutable contract APIs are implemented in feature #2. Use the [API walkthrough](contract-uploads.md) to review them. The React upload and old/new version-selection flow is implemented in #32. Comparison execution remains the next checkpoint.
+Step 2 backend checkpoint: project-scoped JSON/YAML uploads, schema validation and immutable contract APIs are implemented in feature #2. Use the [API walkthrough](contract-uploads.md) to review them. The React upload and old/new version-selection flow is implemented in #32. Comparison execution is available in Step 3 below.
 
 AWS deployment is a later checkpoint after the local flow works. It will add cloud learning without making credentials or paid infrastructure a prerequisite for the first preview.
 
@@ -30,7 +30,7 @@ docker compose exec backend python -m alembic upgrade head
 4. Reload the page. Select the saved project again; it remains in PostgreSQL.
 5. An empty name cannot be submitted. If the backend is unavailable, the UI shows an error and a retry action for loading projects. A failed save retains your form input; check the list before retrying if a connection was lost.
 
-Selection is temporary UI state; projects are persisted. Each list page contains up to 20 projects. Identical names are allowed; UUIDs identify projects. Contract upload is available through Manage contracts; comparison execution remains a future step.
+Selection is temporary UI state; projects are persisted. Each list page contains up to 20 projects. Identical names are allowed; UUIDs identify projects. Contract upload is available through Manage contracts; comparison execution is available in Step 3 below.
 
 CI runs a Chromium walkthrough against the real backend and a fresh PostgreSQL database, including create/reload/select, escaped markup, load retry and failed-save input retention. It uploads a screenshot and failure traces as `browser-test-results`. To run it locally, start a backend on port 8000 with a disposable empty migrated database, then run `npx playwright install chromium` and `npm run test:e2e` from `frontend`. Playwright starts Vite on port 5173; stop any existing server on that port first. The walkthrough creates synthetic projects and expects an empty database on its first run.
 
@@ -50,7 +50,7 @@ Names are trimmed and limited to 1–200 characters; descriptions to 2,000 chara
 
 1. Create or select a project, then choose **Manage contracts** (or **Contracts** in the sidebar).
 2. Upload `docs/examples/customer-v1.json` with label `v1`, then `customer-v2.yaml` with label `v2`.
-3. Confirm the saved filename, OpenAPI version and timestamp. Select distinct baseline/candidate versions; the screen reports the pair ready. Compare stays disabled and labelled coming soon until the comparison API is implemented.
+3. Confirm the saved filename, OpenAPI version and timestamp. Select distinct baseline/candidate versions; the screen reports the pair ready. Compare contracts runs the selected pair and opens its saved evidence.
 4. Try uploading `v1` again: duplicates show an error and retain your input. Invalid documents show validation guidance. Files must be nonempty, at most 1 MiB, and have a plain ASCII `.json`, `.yaml` or `.yml` filename. The backend remains authoritative for schema and resource validation.
 5. Reload and reselect the project to see persisted versions. Project switching clears upload drafts and version selections and cancels pending client requests. Navigation within the same project preserves the draft and pair; refresh/upload success clears the pair. Selections are not persisted across reloads.
 
@@ -60,8 +60,18 @@ Component and client tests use fake HTTP responses. The real-backend browser wal
 
 ## Step 3 runner checkpoint
 
-The [oasdiff runner demo](contract-comparison.md) implements #33 with pinned real-engine fixtures and bounded subprocess execution. Run `python backend/demo_comparison.py` after installing the binary to inspect deterministic changes in the synthetic contracts. This is a backend checkpoint; project-scoped comparison persistence/API (#34) is now available for review through the walkthrough below. The live comparison screen remains pending.
+The [oasdiff runner demo](contract-comparison.md) implements #33 with pinned real-engine fixtures and bounded subprocess execution. Run `python backend/demo_comparison.py` after installing the binary to inspect deterministic changes in the synthetic contracts. This is a backend checkpoint; project-scoped comparison persistence/API (#34) is now available for review through the walkthrough below. The live comparison screen is available in the following checkpoint.
 
 ## Step 3 saved comparison API checkpoint
 
-Apply `alembic upgrade head`, upload two synthetic versions, and use the [saved comparison API walkthrough](contract-comparison.md#saved-comparison-api). Verify repeat POST returns the same result, reverse the pair to see directional changes, then retrieve a saved change by ID. This checkpoint uses PostgreSQL and the real pinned engine without an LLM or credentials. The React Compare button remains disabled until its separate integration step.
+Apply `alembic upgrade head`, upload two synthetic versions, and use the [saved comparison API walkthrough](contract-comparison.md#saved-comparison-api). Verify repeat POST returns the same result, reverse the pair to see directional changes, then retrieve a saved change by ID. This checkpoint uses PostgreSQL and the real pinned engine without an LLM or credentials. Use the live screen checkpoint below to review the browser integration.
+
+## Step 3 live comparison walkthrough
+
+1. Upload the synthetic customer v1/v2 fixtures, choose their baseline/candidate order, and click **Compare contracts**. Selection and uploads are disabled while the request is pending.
+2. The Comparison screen shows saved version IDs, engine version, normalized changes, and canonical document hashes. Filter by breaking, potentially breaking, or nonbreaking; select a change to fetch its stable ID's saved evidence.
+3. Reload, reselect the project, open **Comparison**, and choose its saved comparison. History is paginated 20 at a time. A repeat pair reuses the saved result; reversed order is a distinct comparison.
+4. Empty results and filters have explicit messages. Failed loads offer retry; failed comparison creation preserves the chosen pair. After an unconfirmed network request, refresh saved history before retrying. Cancelling a request does not undo server work.
+5. Switching projects cancels in-flight requests and clears comparison state. Source locations refer to canonical JSON, not original YAML lines. Text is escaped, with no HTML execution. **Analyze impact** remains disabled because the analysis service is a later checkpoint. Task #39's analysis-start acceptance criterion remains open.
+
+Component tests cover filtering, empty states, errors, version changes, stale responses, and exact selected-change requests. The real-backend browser walkthrough creates a comparison and reopens it after reload, with desktop/mobile screenshots.
