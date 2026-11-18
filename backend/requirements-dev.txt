@@ -29,7 +29,7 @@ colorama==0.4.6
     # via pytest
 coverage==7.17.3
     # via pytest-cov
-fastapi==0.162.7
+fastapi==0.163.0
     # via api-contract-copilot (backend/pyproject.toml)
 h11==0.16.0
     # via
