@@ -61,12 +61,22 @@ test('upload JSON and YAML, reject duplicates, reload and choose project-scoped 
   await expect(page.getByText('Choose two different versions.')).toBeVisible();
   await page.getByLabel('Candidate version').selectOption({ label: 'v2 · customer-v2.yaml' });
   await expect(page.getByText('v1 → v2 · Version pair ready.')).toBeVisible();
-  await expect(page.getByRole('button', { name: /Compare contracts/ })).toBeDisabled();
+  await page.getByRole('button', { name: 'Compare contracts', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Contract changes' })).toBeVisible();
+  await page.getByLabel('Filter by severity').selectOption('breaking');
+  await page.locator('.change-option').first().click();
+  await expect(page.getByText('Rule:', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Analyze impact (coming soon)' })).toBeDisabled();
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
     await page.screenshot({ path: `test-results/contracts-live-${width}.png`, fullPage: true });
   }
+  await page.reload();
+  await page.getByRole('button', { name: /Upload walkthrough/ }).click();
+  await page.getByRole('button', { name: 'Comparison', exact: true }).click();
+  await page.getByRole('button', { name: /2 changes/ }).click();
+  await expect(page.getByRole('heading', { name: 'Contract changes' })).toBeVisible();
   await page.getByRole('button', { name: 'Projects', exact: true }).click();
   await page.getByRole('button', { name: /Customer API migration/ }).click();
   await page.getByRole('button', { name: 'Manage contracts' }).click();

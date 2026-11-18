@@ -1,24 +1,9 @@
-import { useState } from 'react';
 import { Badge, Button, EmptyState, Feedback, PageHeader, Panel } from './ui';
 
 export type Screen = 'projects' | 'contracts' | 'comparison' | 'report' | 'components';
-const changes = [
-  { id: 'customer-name', method: 'GET', path: '/customers/{id}', title: 'Customer name field renamed', detail: 'The response field full_name is removed and display_name is added. Consumers reading full_name need an explicit update.', before: 'full_name: string', after: 'display_name: string', severity: 'Breaking' },
-  { id: 'customer-delete', method: 'DELETE', path: '/customers/{id}', title: 'Customer deletion endpoint removed', detail: 'The candidate contract no longer exposes this operation. Existing callers need an alternative workflow.', before: 'DELETE /customers/{id}', after: 'Operation removed', severity: 'Breaking' },
-  { id: 'customer-locale', method: 'GET', path: '/customers/{id}', title: 'Optional locale field added', detail: 'An optional response field provides the customer locale. Existing consumers can ignore it.', before: 'No locale field', after: 'locale?: string', severity: 'Compatible' },
-] as const;
-
-export function DesignPreview({ screen, navigate }: { screen: Exclude<Screen, 'projects' | 'contracts'>; navigate: (screen: Screen) => void }) {
-  const [selected, setSelected] = useState(0);
-  const change = changes[selected];
+export function DesignPreview({ screen, navigate }: { screen: Exclude<Screen, 'projects' | 'contracts' | 'comparison'>; navigate: (screen: Screen) => void }) {
   return <>
     <div className="preview-banner"><Badge tone="warning">Design preview</Badge><span>Sample data · No files are uploaded and no analysis is executed.</span><Button variant="quiet" onClick={() => navigate('projects')}>Back to workspace</Button></div>
-    {screen === 'comparison' && <>
-      <PageHeader eyebrow="Customer API migration / Comparison" title="See what changes.">A sample comparison of Customer API v1 → v2. Contract facts and interpretation have separate places.</PageHeader>
-      <div className="summary-grid"><Panel><span className="metric">3</span><span>Sample changes</span></Panel><Panel><span className="metric danger-text">2</span><span>Breaking changes</span></Panel><Panel><span className="metric success-text">1</span><span>Compatible addition</span></Panel></div>
-      <div className="comparison-grid"><Panel aria-labelledby="changes-title"><h2 id="changes-title">Contract changes</h2><div className="change-list">{changes.map((item, index) => <button key={item.id} className="change-option" aria-pressed={index === selected} onClick={() => setSelected(index)}><Badge tone={item.severity === 'Breaking' ? 'danger' : 'success'}>{item.severity}</Badge><strong>{item.title}</strong><code>{item.method} {item.path}</code></button>)}</div></Panel>
-        <Panel aria-labelledby="change-title"><p className="eyebrow">CHANGE DETAIL</p><h2 id="change-title">{change.title}</h2><p>{change.detail}</p><div className="diff-block"><div><span>BASELINE · v1</span><code>− {change.before}</code></div><div><span>CANDIDATE · v2</span><code>+ {change.after}</code></div></div><p className="field-hint">Illustrative contract fact. Live comparisons will be produced by oasdiff.</p><Button onClick={() => navigate('report')}>View sample impact report →</Button><p className="field-hint">The sample report demonstrates the name-field change.</p></Panel></div>
-    </>}
     {screen === 'report' && <>
       <PageHeader eyebrow="Customer API migration / Impact report" title="Turn a change into a plan." action={<Badge tone="warning">Sample report</Badge>}>Customer name field renamed · GET /customers/{'{id}'}</PageHeader>
       <div className="report-grid"><div className="stack"><Panel aria-labelledby="impact-title"><div className="panel-heading"><h2 id="impact-title">Impact summary</h2><Badge tone="danger">Breaking</Badge></div><p>The integration expects <code>full_name</code>. A v2 response supplies <code>display_name</code>, so the example customer label needs a mapping update.</p><Feedback>Evidence example only. No repository has been searched for this preview.</Feedback></Panel>
