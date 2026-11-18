@@ -75,3 +75,7 @@ Apply `alembic upgrade head`, upload two synthetic versions, and use the [saved 
 5. Switching projects cancels in-flight requests and clears comparison state. Source locations refer to canonical JSON, not original YAML lines. Text is escaped, with no HTML execution. **Analyze impact** remains disabled because the analysis service is a later checkpoint. Task #39's analysis-start acceptance criterion remains open.
 
 Component tests cover filtering, empty states, errors, version changes, stale responses, and exact selected-change requests. The real-backend browser walkthrough creates a comparison and reopens it after reload, with desktop/mobile screenshots.
+
+## Step 4 exact-search backend checkpoint
+
+Task #35 adds [bounded exact code search](code-search.md). Run `docker compose exec backend python demo_code_search.py` after rebuilding the backend to inspect synthetic consumer evidence for `full_name`. This is the next deterministic building block for an impact report. Tool-registry/API integration (#36), documentation retrieval and model-based report generation remain separate steps. The Analyze impact button remains disabled until those dependencies exist.
