@@ -47,6 +47,11 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
+      - name: Install ripgrep for real code-search tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ripgrep
+          rg --version
       - run: python -m pip install -r requirements-dev.txt
       - name: Install checksum-pinned oasdiff for real comparison tests
         run: python install_oasdiff.py
