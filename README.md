@@ -16,9 +16,104 @@ Analyze how OpenAPI contract changes affect consumer integrations, then produce 
 
 Keep the frontend and backend together so cross-layer changes can be tested and reviewed in one pull request. The two demo repositories provide independent codebases for MCP integration.
 
+## Run locally from a fresh clone (Windows)
+
+Install Git and Docker Desktop first. Start Docker Desktop with Linux containers and wait until its engine is running. This Docker setup does not require a separate Python or Node.js installation. Use PowerShell for the commands below.
+
+### 1. Create a directory and clone the project
+
+```powershell
+New-Item -ItemType Directory -Force C:\Projects
+cd C:\Projects
+git clone https://github.com/r-kovalenko/api-contract-copilot.git
+cd api-contract-copilot
+```
+
+Git creates `C:\Projects\api-contract-copilot` automatically. If you already cloned the repository, use its existing directory instead. Run all following Docker commands from the repository root, where `compose.yaml` is located.
+
+### 2. Configure the local database
+
+```powershell
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+notepad .env
+```
+
+Set `POSTGRES_PASSWORD` to your own unique local password, then save and close Notepad:
+
+```dotenv
+POSTGRES_USER=copilot
+POSTGRES_PASSWORD=replace-with-your-local-password
+POSTGRES_DB=copilot
+DATABASE_URL=
+```
+
+Leave `DATABASE_URL` and the API keys empty. The current upload/comparison flow does not need an LLM key or the demo repositories running. `.env` is ignored by Git; never commit its populated contents. If a database volume already exists, retain its original password: changing `.env` does not change the stored database credentials.
+
+### 3. Build, start, and create the database tables
+
+```powershell
+docker compose up -d --build
+```
+
+The first build downloads images and dependencies and can take several minutes. After it finishes successfully, apply the migrations:
+
+```powershell
+docker compose exec backend python -m alembic upgrade head
+docker compose ps
+```
+
+Migrations are explicit; application startup does not run them automatically. Docker installs the pinned comparison engine as part of the backend build.
+
+### 4. Open the application and try the demo
+
+- Application: [http://localhost:8080](http://localhost:8080)
+- Interactive API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+- Database readiness: [http://localhost:8000/api/ready](http://localhost:8000/api/ready) — should return HTTP 200 after migrations.
+
+1. Create a project and select **Manage contracts**.
+2. Upload `C:\Projects\api-contract-copilot\docs\examples\customer-v1.json` with version label `v1`.
+3. Upload `C:\Projects\api-contract-copilot\docs\examples\customer-v2.yaml` with version label `v2`.
+4. Choose baseline `v1` and candidate `v2`, then click **Compare contracts**.
+5. Filter changes by severity and select a change to inspect its saved evidence. Reload, reselect the project, and open **Comparison** to reopen the saved result.
+
+Impact analysis is not implemented yet. This is an unauthenticated, local single-user preview; use synthetic data.
+
+### 5. Stop, restart, or update
+
+Stop the application while keeping saved projects, contracts, and comparisons:
+
+```powershell
+docker compose down
+```
+
+Start it again with `docker compose up -d`. To update an existing checkout with no uncommitted changes:
+
+```powershell
+cd C:\Projects\api-contract-copilot
+git switch main
+git pull --ff-only
+docker compose up -d --build
+docker compose exec backend python -m alembic upgrade head
+```
+
+Do not add `--volumes` or `-v` to the stop command unless you intend to delete the local database.
+
+### Troubleshooting
+
+```powershell
+docker compose ps
+docker compose logs --tail=100 backend frontend db
+```
+
+- **Git or Docker command not found:** install the missing prerequisite and reopen PowerShell.
+- **Cannot connect to the Docker engine:** start Docker Desktop and wait until it is ready.
+- **Port already allocated:** stop the local service using port 8080, 8000, or 5432, then retry startup.
+- **Readiness returns 503:** confirm the database is running and run `docker compose exec backend python -m alembic upgrade head`; inspect the logs if it still fails.
+- **Password authentication failed after editing `.env`:** restore the password used when the database volume was initialized. Stopping and starting containers preserves that volume.
+
 ## Local development
 
-Requires Python 3.12, Node.js 24, and Docker with Compose for containers.
+For running the processes outside containers, use Python 3.12 and Node.js 24. For the complete Docker setup, follow the fresh-clone guide above.
 
 ```sh
 cd backend
