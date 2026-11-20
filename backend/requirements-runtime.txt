@@ -25,7 +25,7 @@ certifi==2026.10.23
     #   httpx
 click==8.5.1
     # via uvicorn
-fastapi==0.163.0
+fastapi==0.163.1
     # via api-contract-copilot (backend/pyproject.toml)
 h11==0.16.0
     # via
@@ -101,7 +101,7 @@ rpds-py==2026.9.1
     #   referencing
 six==1.17.0
     # via rfc3339-validator
-sqlalchemy==2.1.8
+sqlalchemy==2.1.9
     # via
     #   alembic
     #   api-contract-copilot (backend/pyproject.toml)
