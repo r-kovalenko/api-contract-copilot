@@ -22,6 +22,8 @@ class ProjectBodyLimit:
             limit, description = 1024 * 1024, "Contract request exceeds 1 MiB"
         elif re.fullmatch(r"/api/projects/[^/]+/comparisons", path):
             limit, description = 16384, "Comparison request exceeds 16 KiB"
+        elif re.fullmatch(r"/api/projects/[^/]+/documents", path):
+            limit, description = 256 * 1024, "Document exceeds 256 KiB"
         else:
             await self.app(scope, receive, send)
             return

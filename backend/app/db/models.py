@@ -90,3 +90,36 @@ class ContractComparison(Base):
     change_count: Mapped[int] = mapped_column(Integer)
     result: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Document(Base):
+    __tablename__ = "documents"
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        ForeignKey("projects.id", ondelete="RESTRICT"), index=True
+    )
+    provider: Mapped[str] = mapped_column(String(100))
+    api_version: Mapped[str] = mapped_column(String(100))
+    document_type: Mapped[str] = mapped_column(String(40))
+    source_ref: Mapped[str] = mapped_column(String(255))
+    media_type: Mapped[str] = mapped_column(String(30))
+    content_sha256: Mapped[str] = mapped_column(String(64))
+    chunking_version: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DocumentChunk(Base):
+    __tablename__ = "document_chunks"
+    __table_args__ = (
+        UniqueConstraint("document_id", "ordinal", name="uq_document_chunk_ordinal"),
+        CheckConstraint("ordinal >= 0", name="ck_document_chunk_ordinal"),
+        CheckConstraint(
+            "length(content) > 0 AND length(content) <= 2000", name="ck_document_chunk_size"
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    document_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"))
+    ordinal: Mapped[int] = mapped_column(Integer)
+    start_char: Mapped[int] = mapped_column(Integer)
+    end_char: Mapped[int] = mapped_column(Integer)
+    content: Mapped[str] = mapped_column(Text)

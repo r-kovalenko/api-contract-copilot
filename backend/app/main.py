@@ -6,6 +6,7 @@ from app.comparisons import router as comparisons_router
 from app.contracts import router as contracts_router
 from app.db.readiness import database_ready
 from app.db.session import get_engine
+from app.documents import router as documents_router
 from app.projects import router
 from app.request_limits import ProjectBodyLimit
 
@@ -14,6 +15,7 @@ app.add_middleware(ProjectBodyLimit)
 app.include_router(router)
 app.include_router(contracts_router)
 app.include_router(comparisons_router)
+app.include_router(documents_router)
 
 
 class HealthResponse(BaseModel):
