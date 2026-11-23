@@ -8,55 +8,62 @@
         "interval": "weekly"
       },
       "groups": {
-        "codeql": {
+        "security-fixes": {
+          "applies-to": "security-updates",
           "patterns": [
-            "github/codeql-action/*"
+            "*"
           ]
         }
-      }
+      },
+      "open-pull-requests-limit": 0
     },
     {
       "package-ecosystem": "pip",
       "directory": "/backend",
       "schedule": {
-        "interval": "daily"
+        "interval": "weekly"
       },
       "groups": {
-        "python-minor-patch": {
+        "security-fixes": {
+          "applies-to": "security-updates",
           "patterns": [
             "*"
-          ],
-          "update-types": [
-            "minor",
-            "patch"
           ]
         }
-      }
+      },
+      "open-pull-requests-limit": 0
     },
     {
       "package-ecosystem": "npm",
       "directory": "/frontend",
       "schedule": {
         "interval": "weekly"
+      },
+      "open-pull-requests-limit": 0,
+      "groups": {
+        "security-fixes": {
+          "applies-to": "security-updates",
+          "patterns": [
+            "*"
+          ]
+        }
       }
     },
     {
       "package-ecosystem": "pip",
       "directory": "/security",
       "schedule": {
-        "interval": "daily"
+        "interval": "weekly"
       },
       "groups": {
-        "python-minor-patch": {
+        "security-fixes": {
+          "applies-to": "security-updates",
           "patterns": [
             "*"
-          ],
-          "update-types": [
-            "minor",
-            "patch"
           ]
         }
-      }
+      },
+      "open-pull-requests-limit": 0
     }
   ]
 }
