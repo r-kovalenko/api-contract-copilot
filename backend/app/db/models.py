@@ -4,16 +4,18 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     CheckConstraint,
+    Computed,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -111,6 +113,7 @@ class Document(Base):
 class DocumentChunk(Base):
     __tablename__ = "document_chunks"
     __table_args__ = (
+        Index("ix_document_chunks_search", "search_vector", postgresql_using="gin"),
         UniqueConstraint("document_id", "ordinal", name="uq_document_chunk_ordinal"),
         CheckConstraint("ordinal >= 0", name="ck_document_chunk_ordinal"),
         CheckConstraint(
@@ -123,3 +126,6 @@ class DocumentChunk(Base):
     start_char: Mapped[int] = mapped_column(Integer)
     end_char: Mapped[int] = mapped_column(Integer)
     content: Mapped[str] = mapped_column(Text)
+    search_vector: Mapped[Any] = mapped_column(
+        TSVECTOR, Computed("to_tsvector('simple'::regconfig, content)", persisted=True)
+    )
