@@ -3,7 +3,8 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from app.code_search import RepositorySearch, SearchRequest
+from app.code_search import RepositorySearch
+from app.tool_registry import ToolRegistry
 
 
 def main():
@@ -12,8 +13,13 @@ def main():
         (root / "customer_client.py").write_text(
             'def customer_label(customer):\n    return customer["full_name"]\n', encoding="utf-8"
         )
-        result = RepositorySearch({"consumer-demo": root}).search(
-            SearchRequest(repository="consumer-demo", query="full_name")
+        registry = ToolRegistry(RepositorySearch({"consumer-demo": root}))
+        result = registry.invoke(
+            {
+                "operation": "search_code",
+                "repository": "consumer-demo",
+                "query": "full_name",
+            }
         )
         print(result.model_dump_json(indent=2))
 
