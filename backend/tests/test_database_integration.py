@@ -603,3 +603,125 @@ def test_concurrent_document_retries_create_one_chunk_set(migrated):
     assert results[0][0] == results[1][0]
     with session_scope(migrated) as session:
         assert len(list(session.scalars(select(DocumentChunk)))) == 1
+
+
+def test_knowledge_retrieval_filters_scores_limits_and_tools(migrated, monkeypatch):
+    from app.code_search import RepositorySearch
+    from app.document_service import DocumentMetadata, ingest_document
+    from app.knowledge import KnowledgeSearch
+    from app.tool_registry import ToolRegistry, response_adapter
+
+    first, second = uuid4(), uuid4()
+    with session_scope(migrated) as session:
+        session.add_all([Project(id=first, name="First"), Project(id=second, name="Second")])
+
+    def ingest(project, version, provider, kind, ref, body):
+        with session_scope(migrated) as session:
+            return ingest_document(
+                session,
+                project,
+                DocumentMetadata(
+                    api_version=version,
+                    provider=provider,
+                    document_type=kind,
+                    source_ref=ref,
+                ),
+                body.encode(),
+                "text/plain",
+            )[0]
+
+    wanted = ingest(first, "v2", "demo", "migration", "migration.md", "rename customer field")
+    ingest(first, "v2", "demo", "migration", "repeat.md", "rename customer field " * 50)
+    ingest(first, "v1", "demo", "migration", "old.md", "rename customer field " * 60)
+    ingest(second, "v2", "demo", "migration", "secret.md", "rename customer field " * 60)
+    ingest(first, "v2", "other", "migration", "other.md", "rename customer field")
+    ingest(first, "v2", "demo", "guide", "guide.md", "rename customer field")
+    monkeypatch.setattr("app.knowledge_api.get_engine", lambda: migrated)
+    monkeypatch.setattr("app.projects.get_engine", lambda: migrated)
+    params = {
+        "query": "RENAME customer",
+        "api_version": "v2",
+        "provider": "demo",
+        "document_type": "migration",
+        "limit": 1,
+    }
+    url = f"/api/projects/{first}/knowledge/search"
+    with TestClient(app) as client:
+        response = client.get(url, params=params)
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert result["truncated"]
+        assert len(result["hits"]) == 1
+        assert result["hits"][0]["source_ref"] == "repeat.md"
+        assert result["hits"][0]["score"] > 0
+        assert result == client.get(url, params=params).json()
+        all_hits = client.get(url, params=params | {"limit": 20}).json()
+        assert not all_hits["truncated"]
+        assert {h["source_ref"] for h in all_hits["hits"]} == {"migration.md", "repeat.md"}
+        hit = next(h for h in all_hits["hits"] if h["document_id"] == str(wanted.id))
+        chunk = client.get(f"/api/projects/{first}/documents/{wanted.id}/chunks").json()[0]
+        assert hit["source_id"] == chunk["id"]
+        assert hit["snippet"] == chunk["content"]
+        assert (hit["start_char"], hit["end_char"]) == (chunk["start_char"], chunk["end_char"])
+        for query in ["missing", "!!!", "'; DROP TABLE documents; --"]:
+            empty = client.get(url, params=params | {"query": query}).json()
+            assert empty["hits"] == []
+        assert client.get(url, params=params | {"api_version": "v9"}).json()["hits"] == []
+        assert client.get(url, params=params | {"limit": 21}).status_code == 422
+        assert (
+            client.get(f"/api/projects/{uuid4()}/knowledge/search", params=params).status_code
+            == 404
+        )
+    registry = ToolRegistry(RepositorySearch({}), KnowledgeSearch(migrated, first))
+    evidence = registry.invoke({"operation": "search_knowledge", **params})
+    assert evidence.status == "ok"
+    assert evidence.result.model_dump(mode="json") == result
+    assert response_adapter.validate_json(evidence.model_dump_json()) == evidence
+    assert (
+        registry.invoke(
+            {"operation": "search_knowledge", **params, "project_id": str(second)}
+        ).status
+        == "rejected"
+    )
+
+
+def test_document_search_migration_backfills_existing_chunks(engine):
+    migrate(engine, "upgrade", "0003_documents")
+    project, document, chunk = uuid4(), uuid4(), uuid4()
+    with engine.begin() as connection:
+        connection.execute(
+            text("INSERT INTO projects (id,name) VALUES (:id,'Existing')"), {"id": project}
+        )
+        connection.execute(
+            text("""INSERT INTO documents
+            (id,project_id,provider,api_version,document_type,source_ref,media_type,content_sha256,chunking_version)
+            VALUES (:id,:project,'demo','v1','guide','existing.md','text/plain',:digest,1)"""),
+            {"id": document, "project": project, "digest": "a" * 64},
+        )
+        connection.execute(
+            text("""INSERT INTO document_chunks
+            (id,document_id,ordinal,start_char,end_char,content)
+            VALUES (:id,:document,0,0,8,'customer')"""),
+            {"id": chunk, "document": document},
+        )
+    migrate(engine, "upgrade", "head")
+    from app.knowledge import KnowledgeSearch
+    from app.knowledge_schemas import KnowledgeRequest
+
+    result = KnowledgeSearch(engine, project).search(
+        KnowledgeRequest(query="customer", api_version="v1")
+    )
+    assert result.hits[0].source_id == chunk
+    with engine.connect() as connection:
+        assert "ix_document_chunks_search" in {
+            i["name"] for i in inspect(connection).get_indexes("document_chunks")
+        }
+    migrate(engine, "downgrade", "0003_documents")
+    with engine.connect() as connection:
+        assert (
+            connection.scalar(
+                text("SELECT content FROM document_chunks WHERE id=:id"), {"id": chunk}
+            )
+            == "customer"
+        )
+    migrate(engine, "downgrade", "base")

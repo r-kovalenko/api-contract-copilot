@@ -1,6 +1,6 @@
 # Documentation ingestion — #41
 
-The local single-user API accepts raw UTF-8 text or Markdown and stores immutable documentation with project, provider, API version, document type and source reference. No URLs are fetched, Markdown rendered, HTML executed, files opened by source reference, or model calls made. Links and instruction-like content remain untrusted data. Full-text retrieval is the next checkpoint (#42); no embeddings or report UI are implemented here.
+The local single-user API accepts raw UTF-8 text or Markdown and stores immutable documentation with project, provider, API version, document type and source reference. No URLs are fetched, Markdown rendered, HTML executed, files opened by source reference, or model calls made. Links and instruction-like content remain untrusted data. [Filtered full-text retrieval](document-retrieval.md) is available in checkpoint #42; embeddings and the report UI remain future work.
 
 ## Try it from PowerShell
 
