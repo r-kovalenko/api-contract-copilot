@@ -472,3 +472,134 @@ def test_comparison_foreign_keys_enforce_project_boundary(comparison_client, mig
                 result={},
             )
         )
+
+
+def test_document_ingestion_citations_idempotency_and_isolation(migrated, monkeypatch):
+    monkeypatch.setattr("app.projects.get_engine", lambda: migrated)
+    params = {
+        "provider": "demo",
+        "api_version": "v1",
+        "document_type": "migration",
+        "source_ref": "https://example.invalid/guide.md",
+    }
+    body = "é" * 2001 + "\n<script>untrusted</script>"
+    with TestClient(app) as client:
+        first = client.post("/api/projects", json={"name": "First"}).json()["id"]
+        second = client.post("/api/projects", json={"name": "Second"}).json()["id"]
+        url = f"/api/projects/{first}/documents"
+
+        def upload(content=body, **options):
+            return client.post(
+                url,
+                params=params,
+                content=content.encode(),
+                headers={"Content-Type": "text/markdown"},
+                **options,
+            )
+
+        created = upload()
+        assert created.status_code == 201, created.text
+        doc = created.json()
+        assert all(doc[key] == value for key, value in params.items())
+        assert upload().status_code == 200
+        assert upload().json() == doc
+        chunks = client.get(f"{url}/{doc['id']}/chunks").json()
+        assert len(chunks) == 2
+        assert "".join(c["content"] for c in chunks) == body
+        assert [(c["start_char"], c["end_char"]) for c in chunks] == [(0, 2000), (2000, len(body))]
+        assert (
+            client.get(f"{url}/{doc['id']}/chunks", params={"limit": 1, "offset": 1}).json()
+            == chunks[1:]
+        )
+        assert upload("changed").status_code == 409
+        assert client.get(f"{url}/{doc['id']}/chunks").json() == chunks
+        assert client.get(url).json() == [doc]
+        assert client.get(f"/api/projects/{second}/documents").json() == []
+        assert client.get(f"/api/projects/{second}/documents/{doc['id']}").status_code == 404
+        assert client.get(f"/api/projects/{second}/documents/{doc['id']}/chunks").status_code == 404
+        other = client.post(
+            f"/api/projects/{second}/documents",
+            params=params,
+            content=body.encode(),
+            headers={"Content-Type": "text/markdown"},
+        )
+        assert other.status_code == 201
+        assert other.json()["id"] != doc["id"]
+        assert upload(" ").status_code == 422
+        assert (
+            client.post(
+                url, params=params, content=b"x", headers={"Content-Type": "application/pdf"}
+            ).status_code
+            == 415
+        )
+        assert (
+            client.post(
+                url,
+                params=params,
+                content=b"x",
+                headers={"Content-Type": "text/plain", "Content-Encoding": "gzip"},
+            ).status_code
+            == 415
+        )
+        assert client.get(f"/api/projects/{uuid4()}/documents").status_code == 404
+        assert client.get(f"{url}/{doc['id']}/chunks", params={"limit": 101}).status_code == 422
+
+
+def test_document_failed_commit_leaves_no_partial_chunks(migrated, monkeypatch):
+    from unittest.mock import patch
+
+    from sqlalchemy.exc import OperationalError
+
+    from app.db.models import Document, DocumentChunk
+
+    monkeypatch.setattr("app.projects.get_engine", lambda: migrated)
+    with TestClient(app) as client:
+        project = client.post("/api/projects", json={"name": "Rollback"}).json()["id"]
+        with patch(
+            "sqlalchemy.orm.Session.commit",
+            side_effect=OperationalError("private host", {}, Exception("private password")),
+        ):
+            response = client.post(
+                f"/api/projects/{project}/documents",
+                params={
+                    "provider": "demo",
+                    "api_version": "v1",
+                    "document_type": "guide",
+                    "source_ref": "guide.md",
+                },
+                content=b"synthetic",
+                headers={"Content-Type": "text/plain"},
+            )
+        assert response.status_code == 503
+        assert "private" not in response.text
+    with session_scope(migrated) as session:
+        assert list(session.scalars(select(Document))) == []
+        assert list(session.scalars(select(DocumentChunk))) == []
+
+
+def test_concurrent_document_retries_create_one_chunk_set(migrated):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from app.db.models import DocumentChunk
+    from app.document_service import DocumentMetadata, ingest_document
+
+    project = uuid4()
+    with session_scope(migrated) as session:
+        session.add(Project(id=project, name="Concurrent"))
+    barrier = Barrier(2)
+    metadata = DocumentMetadata(
+        provider="demo", api_version="v1", document_type="guide", source_ref="guide.md"
+    )
+
+    def upload():
+        with session_scope(migrated) as session:
+            barrier.wait(timeout=10)
+            return ingest_document(session, project, metadata, b"synthetic", "text/plain")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: upload(), range(2)))
+    assert sorted(created for _, created in results) == [False, True]
+    assert results[0][0] == results[1][0]
+    with session_scope(migrated) as session:
+        assert len(list(session.scalars(select(DocumentChunk)))) == 1

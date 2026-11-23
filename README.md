@@ -2,7 +2,7 @@
 
 Analyze how OpenAPI contract changes affect consumer integrations, then produce evidence-backed impact reports and migration plans.
 
-**Status:** project workspace plus validated contract-upload APIs. Create/list/select projects in React; upload immutable OpenAPI JSON/YAML versions through the API and read project-scoped contract metadata/specifications. See the [contract upload walkthrough](docs/contract-uploads.md). The React Contracts screen uploads files, lists saved metadata and selects distinct baseline/candidate versions; a [pinned comparison runner](docs/contract-comparison.md) is available as a backend demo. Saved project-scoped comparisons and selected-change lookup are available through the API. The live Comparison screen runs saved comparisons, filters severity, reopens history, and retrieves selected-change evidence. A [bounded exact code-search backend demo](docs/code-search.md) is also available. A typed internal `search_code` tool registry preserves evidence and explicit failure states. Search API integration, impact analysis, RAG, agents, approvals, and MCP remain tracked implementation work. See the [step-by-step demo and review checkpoints](docs/mvp-steps.md).
+**Status:** project workspace plus validated contract-upload APIs. Create/list/select projects in React; upload immutable OpenAPI JSON/YAML versions through the API and read project-scoped contract metadata/specifications. See the [contract upload walkthrough](docs/contract-uploads.md). The React Contracts screen uploads files, lists saved metadata and selects distinct baseline/candidate versions; a [pinned comparison runner](docs/contract-comparison.md) is available as a backend demo. Saved project-scoped comparisons and selected-change lookup are available through the API. The live Comparison screen runs saved comparisons, filters severity, reopens history, and retrieves selected-change evidence. A [bounded exact code-search backend demo](docs/code-search.md) is also available. A typed internal `search_code` tool registry preserves evidence and explicit failure states. Project-scoped [text/Markdown ingestion](docs/document-ingestion.md) persists immutable documents and stable citation chunks. Search API integration, document retrieval, impact analysis, agents, approvals, and MCP remain tracked implementation work. See the [step-by-step demo and review checkpoints](docs/mvp-steps.md).
 
 [Project and task tracker](https://github.com/users/r-kovalenko/projects/2) Â· [CI runs](https://github.com/r-kovalenko/api-contract-copilot/actions)
 
@@ -223,3 +223,7 @@ Public repository visibility is not an open-source license. License selection is
 ## Coding and security
 
 Project skills are in `.agents/skills/`; repository guidance is in [AGENTS.md](AGENTS.md). Follow the [OWASP control baseline](docs/security.md) and [GitHub environment-secret guide](docs/secrets.md). Required CI includes Gitleaks, Bandit, dependency audits, and CodeQL analysis before image publication.
+
+### Documentation storage
+
+`documents` stores project/provider/API-version/type/source provenance, content hash and chunking version. `document_chunks` stores immutable citation IDs, ordered text and character offsets, linked to its document. Migration `0003_documents` creates both tables; see the [ingestion walkthrough](docs/document-ingestion.md).
