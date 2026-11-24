@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.analyses import router as analyses_router
 from app.comparisons import router as comparisons_router
 from app.contracts import router as contracts_router
 from app.db.readiness import database_ready
@@ -18,6 +19,7 @@ app.include_router(contracts_router)
 app.include_router(comparisons_router)
 app.include_router(documents_router)
 app.include_router(knowledge_router)
+app.include_router(analyses_router)
 
 
 class HealthResponse(BaseModel):

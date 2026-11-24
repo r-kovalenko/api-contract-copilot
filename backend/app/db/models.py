@@ -61,6 +61,7 @@ class ApiContract(Base):
 class ContractComparison(Base):
     __tablename__ = "contract_comparisons"
     __table_args__ = (
+        UniqueConstraint("project_id", "id", name="uq_comparisons_project_id"),
         ForeignKeyConstraint(
             ["project_id", "baseline_id"],
             ["api_contracts.project_id", "api_contracts.id"],
@@ -129,3 +130,23 @@ class DocumentChunk(Base):
     search_vector: Mapped[Any] = mapped_column(
         TSVECTOR, Computed("to_tsvector('simple'::regconfig, content)", persisted=True)
     )
+
+
+class AnalysisRun(Base):
+    __tablename__ = "analysis_runs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["project_id", "comparison_id"],
+            ["contract_comparisons.project_id", "contract_comparisons.id"],
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("jsonb_typeof(request) = 'object'", name="ck_analysis_request"),
+        CheckConstraint("jsonb_typeof(report) = 'object'", name="ck_analysis_report"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    project_id: Mapped[UUID] = mapped_column(index=True)
+    comparison_id: Mapped[UUID]
+    change_id: Mapped[str] = mapped_column(String(64))
+    request: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    report: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
