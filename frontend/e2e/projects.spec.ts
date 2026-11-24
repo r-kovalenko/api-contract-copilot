@@ -66,7 +66,23 @@ test('upload JSON and YAML, reject duplicates, reload and choose project-scoped 
   await page.getByLabel('Filter by severity').selectOption('breaking');
   await page.locator('.change-option').first().click();
   await expect(page.getByText('Rule:', { exact: false })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Analyze impact (coming soon)' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Analyze impact', exact: true })).toBeDisabled();
+  await page.getByLabel('Exact code search term').fill('full_name');
+  await page.getByLabel('Documentation search terms').fill('customer');
+  const selectedChange = await page.getByText('Stable change ID:', { exact: false }).textContent();
+  const analysisResponse = page.waitForResponse(response => response.url().endsWith('/analyses') && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Analyze impact', exact: true }).click();
+  const createdAnalysis = await analysisResponse;
+  expect(createdAnalysis.status()).toBe(201);
+  const savedAnalysis = await createdAnalysis.json();
+  expect(selectedChange).toContain(savedAnalysis.change_id);
+  expect(savedAnalysis.change_id).toBe(savedAnalysis.report.change.id);
+  expect(savedAnalysis.report.model_status).toBe('offline');
+  await expect(page.getByText('Analysis saved.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Saved with evidence gaps')).toBeVisible();
+  await page.getByRole('button', { name: 'Check saved analyses' }).click();
+  await page.getByRole('button', { name: /Open saved run/ }).first().click();
+  await expect(page.getByText(savedAnalysis.id, { exact: true })).toBeVisible();
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
