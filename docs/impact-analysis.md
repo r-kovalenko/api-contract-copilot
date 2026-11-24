@@ -1,6 +1,6 @@
 # Saved impact-analysis API — #38
 
-The API combines one saved deterministic contract change, exact code search and candidate-version documentation into an immutable evidence report. Severity is copied from oasdiff; potentially affected files are only real code hits. Recommendations are bounded application templates citing the change/matches. Model text cannot change those facts. This is an API checkpoint; React analysis-start and report screens remain #39/#40.
+The API combines one saved deterministic contract change, exact code search and candidate-version documentation into an immutable evidence report. Severity is copied from oasdiff; potentially affected files are only real code hits. Recommendations are bounded application templates citing the change/matches. Model text cannot change those facts. React Comparison now starts analysis for a selected change (#39). The navigable report screen remains #40.
 
 ## Run the offline demo
 
@@ -50,3 +50,11 @@ Creation is limited to two in-flight runs per process. Bodies are capped at 16 K
 ## Validation
 
 CI exercises real PostgreSQL migration round trips/schema agreement, upload/comparison/report creation, project isolation, persistent snapshots, failed commits, empty/failed sources, unknown citations, unsupported claims and untrusted source instructions using synthetic fixtures and fake providers. The new local boundary tests are `backend/tests/test_analyses.py`; full integration cases are in `test_database_integration.py`.
+
+## Start from the React comparison screen
+
+Select a saved comparison and a change. In **Analyze this change**, enter an exact code-search term and documentation search terms. Optionally supply a configured repository alias and documentation provider. Choose **Analyze impact** once; inputs remain disabled while the request is pending. Without a repository, the saved result explicitly records a code-evidence gap.
+
+The confirmation shows the saved summary, partial/evidence-ready status, gap count, offline-provider disclosure and run ID. Full evidence navigation remains the next checkpoint. **Check saved analyses** lists matching runs among the latest 20 project analyses and can reopen their confirmations. It does not paginate older history yet.
+
+Selection changes clear the analysis draft/confirmation and abort the browser request. Server-side work may still complete. Network errors/timeouts never trigger an automatic retry; creation stays disabled until the user checks saved runs and explicitly chooses **Start a separate run**. A run may still be finishing or outside the latest page, so starting another can create a duplicate. Validation failures retain inputs for correction. The browser uses a 60-second request deadline.
