@@ -1,6 +1,6 @@
 # Saved impact-analysis API — #38
 
-The API combines one saved deterministic contract change, exact code search and candidate-version documentation into an immutable evidence report. Severity is copied from oasdiff; potentially affected files are only real code hits. Recommendations are bounded application templates citing the change/matches. Model text cannot change those facts. React Comparison now starts analysis for a selected change (#39). The navigable report screen remains #40.
+The API combines one saved deterministic contract change, exact code search and candidate-version documentation into an immutable evidence report. Severity is copied from oasdiff; potentially affected files are only real code hits. Recommendations are bounded application templates citing the change/matches. Model text cannot change those facts. React Comparison now starts analysis for a selected change (#39). The Impact report screen displays saved reports with citation navigation and paginated history (#40).
 
 ## Run the offline demo
 
@@ -55,6 +55,16 @@ CI exercises real PostgreSQL migration round trips/schema agreement, upload/comp
 
 Select a saved comparison and a change. In **Analyze this change**, enter an exact code-search term and documentation search terms. Optionally supply a configured repository alias and documentation provider. Choose **Analyze impact** once; inputs remain disabled while the request is pending. Without a repository, the saved result explicitly records a code-evidence gap.
 
-The confirmation shows the saved summary, partial/evidence-ready status, gap count, offline-provider disclosure and run ID. Full evidence navigation remains the next checkpoint. **Check saved analyses** lists matching runs among the latest 20 project analyses and can reopen their confirmations. It does not paginate older history yet.
+The confirmation shows the saved summary, partial/evidence-ready status, gap count, offline-provider disclosure and run ID. Choose **View impact report** for source evidence, recommendations and readable gaps. **Check saved analyses** lists matching runs among the latest 20 project analyses and can reopen their confirmations. It does not paginate older history yet.
 
 Selection changes clear the analysis draft/confirmation and abort the browser request. Server-side work may still complete. Network errors/timeouts never trigger an automatic retry; creation stays disabled until the user checks saved runs and explicitly chooses **Start a separate run**. A run may still be finishing or outside the latest page, so starting another can create a duplicate. Validation failures retain inputs for correction. The browser uses a 60-second request deadline.
+
+## Review a saved report in React
+
+After **Analysis saved**, choose **View impact report**. The screen shows deterministic severity/summary, potentially affected file paths and lines, recommendations, validated quotations, and explicit evidence gaps. **Source N** buttons move keyboard focus to the matching evidence card; each card preserves the source ID, snippet and available coordinates/provenance. References and source contents are displayed as escaped text, never executable markup or automatic external links.
+
+**Impact report** in the sidebar opens project-scoped history. Select a saved run; use **Previous analyses**, **Next analyses**, or **Refresh analyses** to browse results in pages of 20. Reloading the browser requires reselecting the project and run; no private report data is stored in local storage. Unavailable reports/history show retry actions, and switching projects aborts pending loads and clears the selected report.
+
+Partial reports distinguish unavailable code/document sources from successful empty searches and show truncation/coverage limits. Offline-provider disclosure stays visible. Unknown citation IDs display **Source unavailable** rather than linking elsewhere. Evidence-ready does not imply complete impact coverage; quotations establish provenance, not truth or relevance. No migration task or external write is triggered by viewing or following a citation.
+
+CI extends the offline browser walkthrough from contract uploads through comparison, documentation ingestion, analysis creation, report viewing and source focus. Desktop/mobile screenshots and overflow checks cover the saved report. Component tests additionally cover real code hits and escaped malicious source content.

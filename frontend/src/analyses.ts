@@ -1,3 +1,4 @@
+import { type Change, type Severity } from './comparisons';
 export interface AnalysisInput {
   comparison_id: string; change_id: string; code_query: string; knowledge_query: string;
   repository?: string; provider?: string;
@@ -7,6 +8,17 @@ export interface AnalysisSummary {
 }
 export interface AnalysisReceipt extends AnalysisSummary {
   report: { status: 'partial' | 'evidence_ready'; summary: string; model_status: string; evidence_gaps: string[] };
+}
+export interface AnalysisReport extends AnalysisReceipt {
+  request: AnalysisInput;
+  report: AnalysisReceipt['report'] & {
+    severity: Severity; change: Change; api_version: string;
+    affected_files: { path: string; line: number; source_id: string }[];
+    recommendations: { text: string; source_ids: string[] }[];
+    model_observations: { text: string; source_ids: string[] }[];
+    code: null | { repository: string; query: string; truncated: boolean; searched_files: number; skipped_entries: number; hits: { id: string; path: string; line: number; snippet: string; snippet_truncated: boolean; snippet_start_column: number; file_sha256: string }[] };
+    knowledge: null | { query: string; truncated: boolean; hits: { source_id: string; document_id: string; provider: string; api_version: string; document_type: string; source_ref: string; start_char: number; end_char: number; snippet: string; score: number }[] };
+  };
 }
 export class AnalysisError extends Error {
   constructor(message: string, readonly uncertain = false) { super(message); }
@@ -30,5 +42,5 @@ async function request<T>(url: string, signal: AbortSignal, body?: AnalysisInput
   }
 }
 export const createAnalysis = (project: string, input: AnalysisInput, signal: AbortSignal) => request<AnalysisReceipt>(path(project), signal, input);
-export const listAnalyses = (project: string, signal: AbortSignal) => request<AnalysisSummary[]>(`${path(project)}?limit=20`, signal);
-export const getAnalysis = (project: string, id: string, signal: AbortSignal) => request<AnalysisReceipt>(`${path(project)}/${encodeURIComponent(id)}`, signal);
+export const listAnalyses = (project: string, signal: AbortSignal, offset = 0) => request<AnalysisSummary[]>(`${path(project)}?limit=20&offset=${offset}`, signal);
+export const getAnalysis = (project: string, id: string, signal: AbortSignal) => request<AnalysisReport>(`${path(project)}/${encodeURIComponent(id)}`, signal);

@@ -79,3 +79,7 @@ Component tests cover filtering, empty states, errors, version changes, stale re
 ## Step 4 exact-search backend checkpoint
 
 Task #35 adds [bounded exact code search](code-search.md). Run `docker compose exec backend python demo_code_search.py` after rebuilding the backend to inspect synthetic consumer evidence for `full_name`. This is the next deterministic building block for an impact report. Tool-registry/API integration (#36), documentation retrieval and model-based report generation remain separate steps. The Analyze impact button remains disabled until those dependencies exist.
+
+## Saved impact report checkpoint (#40)
+
+Select a comparison change, enter evidence search terms, and run **Analyze impact**. Choose **View impact report** to review facts, potential files, recommendations, source citations and explicit gaps. Use the **Impact report** sidebar to reopen saved runs after reselecting the project. The default provider remains offline; no model credentials are needed. See [the complete walkthrough](impact-analysis.md).
