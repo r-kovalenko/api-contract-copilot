@@ -8,6 +8,7 @@ COPY install_oasdiff.py ./
 RUN python install_oasdiff.py
 COPY app ./app
 COPY demo_code_search.py ./
+COPY demo_model_provider.py ./
 COPY alembic.ini ./
 COPY alembic ./alembic
 USER 10001:10001
