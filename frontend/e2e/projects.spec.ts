@@ -69,6 +69,10 @@ test('upload JSON and YAML, reject duplicates, reload and choose project-scoped 
   await expect(page.getByRole('button', { name: 'Analyze impact', exact: true })).toBeDisabled();
   await page.getByLabel('Exact code search term').fill('full_name');
   await page.getByLabel('Documentation search terms').fill('customer');
+  const projectRows = await (await page.request.get('/api/projects?limit=100')).json();
+  const reportProject = projectRows.find((item: { name: string }) => item.name === 'Upload walkthrough');
+  const docUpload = await page.request.post(`/api/projects/${reportProject.id}/documents?provider=demo&api_version=v2&document_type=migration&source_ref=migration.md`, { headers: { 'Content-Type': 'text/plain' }, data: 'customer migration: replace full_name with display_name.' });
+  expect(docUpload.status()).toBe(201);
   const selectedChange = await page.getByText('Stable change ID:', { exact: false }).textContent();
   const analysisResponse = page.waitForResponse(response => response.url().endsWith('/analyses') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Analyze impact', exact: true }).click();
@@ -83,10 +87,16 @@ test('upload JSON and YAML, reject duplicates, reload and choose project-scoped 
   await page.getByRole('button', { name: 'Check saved analyses' }).click();
   await page.getByRole('button', { name: /Open saved run/ }).first().click();
   await expect(page.getByText(savedAnalysis.id, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'View impact report', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Impact summary' })).toBeVisible();
+  await expect(page.getByText('Partial evidence', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Source 1: Contract' }).click();
+  await expect(page.getByRole('article', { name: 'Source 1: Contract' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Source 2: migration.md' })).toBeVisible();
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
-    await page.screenshot({ path: `test-results/contracts-live-${width}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/impact-report-live-${width}.png`, fullPage: true });
   }
   await page.reload();
   await page.getByRole('button', { name: /Upload walkthrough/ }).click();

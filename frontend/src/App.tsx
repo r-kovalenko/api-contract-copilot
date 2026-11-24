@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { createProject, listProjects, type Project } from './projects';
 import { DesignPreview, type Screen } from './DesignPreview';
 import { Contracts } from './ContractWorkspace';
+import { ReportWorkspace } from './ReportWorkspace';
 import { ComparisonWorkspace } from './ComparisonWorkspace';
 import { type Comparison } from './comparisons';
 import { Shell } from './Shell';
@@ -18,18 +19,20 @@ export function App() {
   }
   return <Shell screen={screen} navigate={navigate}>
     <div hidden={screen !== 'projects'}><ProjectWorkspace selected={selected} setSelected={setSelected} openContracts={() => navigate('contracts')} /></div>
-    {selected ? <ProjectScreens key={selected.id} project={selected} screen={screen} contractsVisited={contractsVisited} navigate={navigate} /> : (screen === 'contracts' || screen === 'comparison') && <Panel><EmptyState title="Select a project first">Choose or create a project to work with its contracts and comparisons.</EmptyState><Button onClick={() => navigate('projects')}>Choose a project</Button></Panel>}
-    {(screen === 'report' || screen === 'components') && <DesignPreview screen={screen} navigate={navigate} />}
+    {selected ? <ProjectScreens key={selected.id} project={selected} screen={screen} contractsVisited={contractsVisited} navigate={navigate} /> : (screen === 'contracts' || screen === 'comparison' || screen === 'report') && <Panel><EmptyState title="Select a project first">Choose or create a project to work with its contracts and comparisons.</EmptyState><Button onClick={() => navigate('projects')}>Choose a project</Button></Panel>}
+    {(screen === 'components') && <DesignPreview screen={screen} navigate={navigate} />}
   </Shell>;
 }
 
 function ProjectScreens({ project, screen, contractsVisited, navigate }: { project: Project; screen: Screen; contractsVisited: boolean; navigate: (screen: Screen) => void }) {
   const [latest, setLatest] = useState<Comparison | null>(null);
   const [visited, setVisited] = useState(false);
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
   useEffect(() => { if (screen === 'comparison') setVisited(true); }, [screen]);
   return <>
     {contractsVisited && <div hidden={screen !== 'contracts'}><Contracts project={project} onCompared={result => { setLatest(result); navigate('comparison'); }} /></div>}
-    {(visited || screen === 'comparison') && <div hidden={screen !== 'comparison'}><ComparisonWorkspace project={project} latest={latest} openContracts={() => navigate('contracts')} /></div>}
+    {(visited || screen === 'comparison') && <div hidden={screen !== 'comparison'}><ComparisonWorkspace project={project} latest={latest} openContracts={() => navigate('contracts')} openReport={id => { setAnalysisId(id); navigate('report'); }} /></div>}
+    {screen === 'report' && <ReportWorkspace project={project} initialId={analysisId} openComparison={() => navigate('comparison')} />}
   </>;
 }
 

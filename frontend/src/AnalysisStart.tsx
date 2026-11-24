@@ -3,7 +3,7 @@ import { AnalysisError, createAnalysis, getAnalysis, listAnalyses, type Analysis
 import { Badge, Button, Feedback } from './ui';
 
 // Mount with a project/comparison/change key: changing selection aborts and clears drafts/results.
-export function AnalysisStart({ projectId, comparisonId, changeId }: { projectId: string; comparisonId: string; changeId: string }) {
+export function AnalysisStart({ projectId, comparisonId, changeId, openReport }: { projectId: string; comparisonId: string; changeId: string; openReport?: (id: string) => void }) {
   const [code, setCode] = useState('');
   const [knowledge, setKnowledge] = useState('');
   const [repository, setRepository] = useState('');
@@ -70,7 +70,7 @@ export function AnalysisStart({ projectId, comparisonId, changeId }: { projectId
     {busy && <Feedback>Gathering or loading evidence. This may take up to a minute.</Feedback>}
     {error && <Feedback tone="error">{error}</Feedback>}
     {uncertain && <p>A disconnected request may still finish on the server. Refresh saved analyses before choosing to run again.</p>}
-    {receipt && <div aria-label="Saved analysis"><Feedback tone="success">Analysis saved.</Feedback><Badge tone={receipt.report.status === 'partial' ? 'warning' : 'success'}>{receipt.report.status === 'partial' ? 'Saved with evidence gaps' : 'Evidence ready'}</Badge><p>{receipt.report.summary}</p><p>{receipt.report.evidence_gaps.length} evidence gaps recorded. {receipt.report.model_status === 'offline' ? 'Offline provider: no model analysis was performed.' : 'Model observations remain separate from deterministic facts.'}</p><p className="field-hint">Saved run: <code>{receipt.id}</code>. Navigable report details are the next checkpoint.</p></div>}
+    {receipt && <div aria-label="Saved analysis"><Feedback tone="success">Analysis saved.</Feedback><Badge tone={receipt.report.status === 'partial' ? 'warning' : 'success'}>{receipt.report.status === 'partial' ? 'Saved with evidence gaps' : 'Evidence ready'}</Badge><p>{receipt.report.summary}</p><p>{receipt.report.evidence_gaps.length} evidence gaps recorded. {receipt.report.model_status === 'offline' ? 'Offline provider: no model analysis was performed.' : 'Model observations remain separate from deterministic facts.'}</p><p className="field-hint">Saved run: <code>{receipt.id}</code>.</p>{openReport && <Button onClick={() => openReport(receipt.id)}>View impact report</Button>}</div>}
     <Button variant="secondary" disabled={busy} onClick={checkSaved}>Check saved analyses</Button>
     {history !== null && <div><p>Matching runs among the latest 20 project analyses. Older runs remain available through the API.</p>{history.length ? <ul>{history.map(item => <li key={item.id}><Button variant="quiet" disabled={busy} onClick={() => open(item.id)}>Open saved run {new Date(item.created_at).toLocaleString()}</Button></li>)}</ul> : <p>No matching saved runs in this page.</p>}{(uncertain || receipt) && <Button variant="secondary" disabled={busy} onClick={() => { setUncertain(false); setReceipt(null); setError(''); }}>Start a separate run</Button>}</div>}
   </section>;

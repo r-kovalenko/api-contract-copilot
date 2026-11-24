@@ -10,9 +10,9 @@ test('design previews are labelled and navigation preserves project form state',
   await page.getByRole('button', { name: 'Comparison' }).click();
   await expect(page.getByText('Select a project first')).toBeVisible();
   await expect(page.getByRole('main')).toBeFocused();
-  await page.getByRole('button', { name: 'Impact report Preview' }).click();
-  await expect(page.getByRole('heading', { name: 'Evidence gaps' })).toBeVisible();
-  await page.getByRole('button', { name: 'Back to workspace' }).click();
+  await page.getByRole('button', { name: 'Impact report' }).click();
+  await expect(page.getByText('Select a project first')).toBeVisible();
+  await page.getByRole('button', { name: 'Choose a project' }).click();
   await expect(page.getByLabel('Project name', { exact: true })).toHaveValue('Keep my draft');
 });
 
@@ -24,7 +24,7 @@ test('screens fit desktop and mobile and expose keyboard navigation', async ({ p
   await expect(page.getByRole('main')).toBeFocused();
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });
-    for (const [label, file] of [['Projects', 'projects'], ['Contracts', 'contracts'], ['Comparison', 'comparison'], ['Impact report Preview', 'report'], ['Components Preview', 'components']]) {
+    for (const [label, file] of [['Projects', 'projects'], ['Contracts', 'contracts'], ['Comparison', 'comparison'], ['Impact report', 'report'], ['Components Preview', 'components']]) {
       await page.getByRole('button', { name: label, exact: true }).click();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
       await page.screenshot({ path: `test-results/design-${file}-${width}.png`, fullPage: true });
