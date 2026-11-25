@@ -98,3 +98,9 @@ Follow [the ranking and failure-policy walkthrough](document-retrieval.md#hybrid
 This combines filtered keyword and compatible vector candidates with deterministic RRF.
 The default fake provider demonstrates mechanics only; keyword remains the default.
 Pause for review before the evaluation dataset task (#47).
+
+## Ground-truth checkpoint (#47)
+
+Follow [the evaluation fixture guide](evaluation.md) to validate and inspect 10 documents,
+8 retrieval cases and 6 contract scenarios. Review rationales and held-out membership.
+This checkpoint defines labels; metrics and evaluation reports follow in #48.

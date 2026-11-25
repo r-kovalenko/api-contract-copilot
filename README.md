@@ -245,3 +245,10 @@ hybrid search remains pending. See the [embedding walkthrough](docs/embeddings.m
 The knowledge API/tool supports opt-in `mode=hybrid`, combining filtered keyword and
 compatible pgvector candidates with deterministic reciprocal-rank fusion. Keyword is
 the default because the embedding provider is synthetic. See the [retrieval guide](docs/document-retrieval.md).
+
+### Evaluation fixtures
+
+The [versioned synthetic ground-truth corpus](docs/evaluation.md) contains retrieval
+questions with expected citation IDs, negative/ambiguous cases, held-out subsets, and
+pinned-engine contract expectations. Fixture/schema tests run in ordinary CI without
+model credentials. Retrieval quality scoring remains the next checkpoint (#48).
