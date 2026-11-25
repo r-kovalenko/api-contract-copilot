@@ -888,3 +888,134 @@ def test_analysis_commit_failure_rolls_back(analysis_context, monkeypatch, migra
     assert "private" not in response.text
     with session_scope(migrated) as session:
         assert list(session.scalars(select(AnalysisRun))) == []
+
+
+@pytest.fixture
+def embedding_context(migrated, monkeypatch):
+    monkeypatch.setattr("app.projects.get_engine", lambda: migrated)
+    with TestClient(app) as client:
+        pid = client.post("/api/projects", json={"name": "Embeddings"}).json()["id"]
+        params = dict(
+            provider="demo", api_version="v1", document_type="guide", source_ref="guide.md"
+        )
+        url = f"/api/projects/{pid}/documents"
+        uploaded = client.post(
+            url, params=params, content="synthetic " * 3300, headers={"Content-Type": "text/plain"}
+        )
+        assert uploaded.status_code == 201
+        doc = uploaded.json()["id"]
+        yield client, doc, url, params
+    app.dependency_overrides.clear()
+
+
+def test_embedding_storage_idempotency_isolation_and_reindex(embedding_context, migrated):
+    from app.db.models import ChunkEmbedding
+    from app.embedding_provider import EmbeddingSpec, FakeEmbeddingProvider, provider
+
+    client, doc, documents_url, params = embedding_context
+    url = f"{documents_url}/{doc}/embeddings"
+    assert client.get(url).json()["ready"] is False
+    first = client.post(url)
+    assert first.status_code == 200, first.text
+    assert first.json()["ready"]
+    assert first.json()["embedded_chunks"] == 17
+    with session_scope(migrated) as session:
+        rows = list(session.scalars(select(ChunkEmbedding)))
+        snapshot = [(r.chunk_id, r.embedding, r.created_at) for r in rows]
+        assert len(rows[0].embedding) == 32
+    assert (
+        client.post(
+            documents_url,
+            params=params,
+            content="synthetic " * 3300,
+            headers={"Content-Type": "text/plain"},
+        ).status_code
+        == 200
+    )
+    assert client.post(url).json() == first.json()
+    with session_scope(migrated) as session:
+        rows = session.scalars(select(ChunkEmbedding))
+        assert [(r.chunk_id, r.embedding, r.created_at) for r in rows] == snapshot
+    other = client.post("/api/projects", json={"name": "Other"}).json()["id"]
+    for method in (client.get, client.post):
+        assert method(f"/api/projects/{other}/documents/{doc}/embeddings").status_code == 404
+    with TestClient(app) as restarted:
+        assert restarted.get(url).json() == first.json()
+
+    class Changed(FakeEmbeddingProvider):
+        spec = EmbeddingSpec(model="fake-v2", dimensions=2)
+
+        async def embed(self, texts):
+            return [[1.0, 2.0] for _ in texts]
+
+    app.dependency_overrides[provider] = Changed
+    assert client.post(url).status_code == 409
+    replaced = client.post(url + "?reindex=true")
+    assert replaced.status_code == 200, replaced.text
+    assert replaced.json()["model"] == "fake-v2"
+    assert replaced.json()["dimensions"] == 2
+    with session_scope(migrated) as session:
+        assert all(r.embedding == [1, 2] for r in session.scalars(select(ChunkEmbedding)))
+
+
+def test_embedding_failure_and_commit_rollback_preserve_snapshot(embedding_context):
+    from unittest.mock import patch
+
+    from sqlalchemy.exc import OperationalError
+
+    from app.embedding_provider import (
+        EmbeddingError,
+        EmbeddingSpec,
+        FakeEmbeddingProvider,
+        provider,
+    )
+
+    client, doc, documents_url, _ = embedding_context
+    url = f"{documents_url}/{doc}/embeddings"
+    original = client.post(url).json()
+
+    class Broken(FakeEmbeddingProvider):
+        spec = EmbeddingSpec(model="fake-v2", dimensions=32)
+        calls = 0
+
+        async def embed(self, texts):
+            self.calls += 1
+            if self.calls == 2:
+                raise EmbeddingError("private-provider-message")
+            return await super().embed(texts)
+
+    app.dependency_overrides[provider] = Broken
+    failed = client.post(url + "?reindex=true")
+    assert failed.status_code == 503
+    assert "private" not in failed.text
+    assert client.get(url).json() == original
+
+    class Changed(FakeEmbeddingProvider):
+        spec = EmbeddingSpec(model="fake-v3", dimensions=32)
+
+    app.dependency_overrides[provider] = Changed
+    with patch(
+        "sqlalchemy.orm.Session.commit",
+        side_effect=OperationalError("private", {}, Exception("secret")),
+    ):
+        failed = client.post(url + "?reindex=true")
+        assert failed.status_code == 503
+        assert "secret" not in failed.text
+    assert client.get(url).json() == original
+    assert client.post(url + "?reindex=true").json()["model"] == "fake-v3"
+
+
+def test_embedding_concurrent_requests_reuse_snapshot(embedding_context):
+    from concurrent.futures import ThreadPoolExecutor
+
+    client, doc, documents_url, _ = embedding_context
+    url = f"{documents_url}/{doc}/embeddings"
+
+    def index(_):
+        with TestClient(app) as concurrent:
+            return concurrent.post(url)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(index, range(2)))
+    assert all(r.status_code == 200 for r in results)
+    assert results[0].json() == results[1].json()

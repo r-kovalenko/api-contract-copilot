@@ -18,6 +18,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from app.db.vector import Vector
+
 
 class Base(DeclarativeBase):
     pass
@@ -149,4 +151,20 @@ class AnalysisRun(Base):
     change_id: Mapped[str] = mapped_column(String(64))
     request: Mapped[dict[str, Any]] = mapped_column(JSONB)
     report: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ChunkEmbedding(Base):
+    __tablename__ = "chunk_embeddings"
+    __table_args__ = (
+        CheckConstraint("dimensions BETWEEN 1 AND 2000", name="ck_embedding_dimensions"),
+        CheckConstraint("vector_dims(embedding) = dimensions", name="ck_embedding_vector"),
+        CheckConstraint("length(btrim(model)) > 0", name="ck_embedding_model"),
+    )
+    chunk_id: Mapped[UUID] = mapped_column(
+        ForeignKey("document_chunks.id", ondelete="CASCADE"), primary_key=True
+    )
+    model: Mapped[str] = mapped_column(String(100))
+    dimensions: Mapped[int] = mapped_column(Integer)
+    embedding: Mapped[list[float]] = mapped_column(Vector())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
