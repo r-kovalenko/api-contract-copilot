@@ -83,3 +83,10 @@ Task #35 adds [bounded exact code search](code-search.md). Run `docker compose e
 ## Saved impact report checkpoint (#40)
 
 Select a comparison change, enter evidence search terms, and run **Analyze impact**. Choose **View impact report** to review facts, potential files, recommendations, source citations and explicit gaps. Use the **Impact report** sidebar to reopen saved runs after reselecting the project. The default provider remains offline; no model credentials are needed. See [the complete walkthrough](impact-analysis.md).
+
+## Embedding lifecycle checkpoint (#45)
+
+Follow [the offline embedding walkthrough](embeddings.md) after ingesting a document.
+Check unindexed status, index it, and repeat the request to verify an unchanged saved
+snapshot. This API checkpoint prepares hybrid retrieval (#46); it introduces no live
+model calls or browser screen. Pause for review before implementing ranking.
