@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class KnowledgeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, frozen=True)
+    mode: Literal["keyword", "hybrid"] = "keyword"
     query: str = Field(min_length=1, max_length=200)
     api_version: str = Field(min_length=1, max_length=100)
     provider: str | None = Field(default=None, min_length=1, max_length=100)
@@ -45,3 +46,5 @@ class KnowledgeResult(BaseModel):
     api_version: str
     hits: list[KnowledgeHit] = Field(max_length=20)
     truncated: bool
+    mode: Literal["keyword", "hybrid"] = "keyword"
+    embedding_model: str | None = None

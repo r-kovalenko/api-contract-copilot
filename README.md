@@ -239,3 +239,9 @@ dimensions, creation time, and a cascading chunk foreign key. Explicit indexing 
 idempotent retries and atomic reindexing. The default provider is offline test data;
 hybrid search remains pending. See the [embedding walkthrough](docs/embeddings.md).
 
+
+### Hybrid retrieval
+
+The knowledge API/tool supports opt-in `mode=hybrid`, combining filtered keyword and
+compatible pgvector candidates with deterministic reciprocal-rank fusion. Keyword is
+the default because the embedding provider is synthetic. See the [retrieval guide](docs/document-retrieval.md).

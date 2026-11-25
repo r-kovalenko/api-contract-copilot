@@ -65,3 +65,54 @@ def test_storage_failure_sanitized_in_service_api_and_tool():
         )
         assert response.status_code == 503
         assert "private" not in response.text
+
+
+def test_rrf_known_ranking_duplicates_and_ties():
+    from types import SimpleNamespace
+    from uuid import UUID
+
+    from app.rank_fusion import fuse
+
+    def row(n):
+        return SimpleNamespace(id=UUID(int=n)), SimpleNamespace(id=n), 999
+
+    a, b, c = row(1), row(2), row(3)
+    result = fuse([a, a, b], [b, c])
+    assert [r[0].id.int for r in result] == [2, 1, 3]
+    assert result[0][2] == pytest.approx(1 / 62 + 1 / 61)
+    assert fuse([], []) == []
+    assert [r[0].id.int for r in fuse([b], [a])] == [1, 2]
+    assert fuse([a, b], [b, c]) == result
+
+
+def test_hybrid_provider_failure_is_not_empty_success():
+    from contextlib import contextmanager
+
+    from app.embedding_provider import EmbeddingError, FakeEmbeddingProvider
+
+    class Broken(FakeEmbeddingProvider):
+        async def embed(self, texts):
+            raise EmbeddingError("private-key")
+
+    @contextmanager
+    def session(_):
+        yield None
+
+    with (
+        patch("app.knowledge.session_scope", session),
+        patch("app.knowledge.get_project", return_value=object()),
+    ):
+        with pytest.raises(KnowledgeError, match="knowledge_unavailable"):
+            KnowledgeSearch(None, uuid4(), Broken()).search(
+                KnowledgeRequest(query="customer", api_version="v1", mode="hybrid")
+            )
+
+
+def test_rrf_candidate_cap():
+    from types import SimpleNamespace
+    from uuid import UUID
+
+    from app.rank_fusion import fuse
+
+    rows = [(SimpleNamespace(id=UUID(int=n)), None, 0) for n in range(1, 52)]
+    assert len(fuse(rows, [])) == 50

@@ -1019,3 +1019,103 @@ def test_embedding_concurrent_requests_reuse_snapshot(embedding_context):
         results = list(pool.map(index, range(2)))
     assert all(r.status_code == 200 for r in results)
     assert results[0].json() == results[1].json()
+
+
+def test_hybrid_ranking_filters_and_source_failures(migrated, monkeypatch):
+
+    from sqlalchemy.exc import OperationalError
+
+    from app.db.models import ChunkEmbedding, DocumentChunk
+    from app.document_service import DocumentMetadata, ingest_document
+    from app.embedding_provider import EmbeddingSpec, FakeEmbeddingProvider
+    from app.knowledge import KnowledgeError, KnowledgeSearch
+    from app.knowledge_schemas import KnowledgeRequest
+
+    pid, other = uuid4(), uuid4()
+    with session_scope(migrated) as session:
+        session.add_all([Project(id=pid, name="Hybrid"), Project(id=other, name="Other")])
+    ids = []
+    cases = [
+        (pid, "v1", "demo", "guide", "customer", [0.0, 1.0]),
+        (pid, "v1", "demo", "guide", "account", [1.0, 0.0]),
+        (other, "v1", "demo", "guide", "customer", [1.0, 0.0]),
+        (pid, "v2", "demo", "guide", "customer", [1.0, 0.0]),
+        (pid, "v1", "else", "guide", "customer", [1.0, 0.0]),
+        (pid, "v1", "demo", "migration", "customer", [1.0, 0.0]),
+    ]
+    for i, (project, version, provider, kind, content, vector) in enumerate(cases):
+        with session_scope(migrated) as session:
+            doc, _ = ingest_document(
+                session,
+                project,
+                DocumentMetadata(
+                    provider=provider, api_version=version, document_type=kind, source_ref=f"{i}.md"
+                ),
+                content.encode(),
+                "text/plain",
+            )
+        with session_scope(migrated) as session:
+            chunk = session.scalar(select(DocumentChunk).where(DocumentChunk.document_id == doc.id))
+            ids.append(chunk.id)
+            session.add(
+                ChunkEmbedding(
+                    chunk_id=chunk.id, model="fixture-v1", dimensions=2, embedding=vector
+                )
+            )
+
+    class Fixture(FakeEmbeddingProvider):
+        spec = EmbeddingSpec(model="fixture-v1", dimensions=2)
+
+        async def embed(self, texts):
+            return [[1.0, 0.0] for _ in texts]
+
+    service = KnowledgeSearch(migrated, pid, Fixture())
+    request = KnowledgeRequest(
+        query="customer",
+        api_version="v1",
+        provider="demo",
+        document_type="guide",
+        mode="hybrid",
+        limit=1,
+    )
+    first = service.search(request)
+    assert first.hits[0].source_id == ids[0]
+    assert first.hits[0].score == pytest.approx(1 / 61 + 1 / 62)
+    assert first.truncated
+    assert first.embedding_model == "fixture-v1"
+    assert service.search(request) == first
+    full = service.search(request.model_copy(update={"limit": 20}))
+    assert [h.source_id for h in full.hits] == ids[:2]
+    assert full.hits[0].snippet == "customer"
+    assert full.hits[0].start_char == 0 and full.hits[0].end_char == 8
+    assert not full.truncated
+    assert service.search(request.model_copy(update={"api_version": "absent"})).hits == []
+    from app.code_search import RepositorySearch
+    from app.tool_registry import ToolRegistry
+
+    tool = ToolRegistry(RepositorySearch({}), service).invoke(
+        {"operation": "search_knowledge", **request.model_dump()}
+    )
+    assert tool.status == "ok" and tool.result == first
+    monkeypatch.setattr("app.knowledge_api.get_engine", lambda: migrated)
+    monkeypatch.setattr("app.knowledge.provider", Fixture)
+    with TestClient(app) as client:
+        response = client.get(f"/api/projects/{pid}/knowledge/search", params=request.model_dump())
+        assert response.status_code == 200, response.text
+        assert response.json() == first.model_dump(mode="json")
+    # Incompatible dimensions/models must be excluded before distance evaluation.
+    with session_scope(migrated) as session:
+        row = session.get(ChunkEmbedding, ids[1])
+        row.model, row.dimensions, row.embedding = "other-model", 3, [1.0, 2.0, 3.0]
+    assert [h.source_id for h in service.search(request.model_copy(update={"limit": 20})).hits] == [
+        ids[0]
+    ]
+    for source in ("search_chunks", "search_vectors"):
+        with monkeypatch.context() as scoped:
+
+            def unavailable(*args):
+                raise OperationalError("private", {}, Exception("secret"))
+
+            scoped.setattr(f"app.knowledge.{source}", unavailable)
+            with pytest.raises(KnowledgeError, match="knowledge_unavailable"):
+                service.search(request)
