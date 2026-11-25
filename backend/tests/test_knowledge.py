@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -96,7 +96,7 @@ def test_hybrid_provider_failure_is_not_empty_success():
 
     @contextmanager
     def session(_):
-        yield None
+        yield Mock()
 
     with (
         patch("app.knowledge.session_scope", session),
