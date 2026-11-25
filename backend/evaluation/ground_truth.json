@@ -1,0 +1,718 @@
+{
+  "schema_version": 1,
+  "dataset_version": "1.0.0",
+  "provenance": "Repository-authored synthetic data; no customer or external content",
+  "oasdiff_version": "1.37.0",
+  "documents": [
+    {
+      "key": "rename",
+      "split": "development",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "metadata": {
+        "provider": "customer-demo",
+        "api_version": "v2",
+        "document_type": "migration",
+        "source_ref": "rename.md"
+      },
+      "text": "Customer migration v2: replace full_name with display_name. Update the response mapping and consumer tests.",
+      "source_id": "df67629f-3a7d-5295-9ca6-e5add896a327"
+    },
+    {
+      "key": "pagination",
+      "split": "development",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "metadata": {
+        "provider": "customer-demo",
+        "api_version": "v2",
+        "document_type": "migration",
+        "source_ref": "pagination.md"
+      },
+      "text": "Customer pagination v2 uses next_cursor. Continue until next_cursor is absent. Do not increment page numbers.",
+      "source_id": "1092d6a0-38a0-508a-ba07-8807f860e5ae"
+    },
+    {
+      "key": "retry-guide",
+      "split": "development",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "metadata": {
+        "provider": "customer-demo",
+        "api_version": "v2",
+        "document_type": "guide",
+        "source_ref": "retry-guide.md"
+      },
+      "text": "Retry policy: after HTTP 429 wait for Retry-After before retrying. Apply bounded retries.",
+      "source_id": "ce714c76-b652-5eee-af77-67404e1dd943"
+    },
+    {
+      "key": "retry-reference",
+      "split": "development",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "metadata": {
+        "provider": "customer-demo",
+        "api_version": "v2",
+        "document_type": "reference",
+        "source_ref": "retry-reference.md"
+      },
+      "text": "HTTP 429 reference: Retry-After specifies the wait interval for rate limiting.",
+      "source_id": "ec1fbc67-3aaf-54e1-a1dc-a238b30f96c4"
+    },
+    {
+      "key": "old-name",
+      "split": "development",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "metadata": {
+        "provider": "customer-demo",
+        "api_version": "v1",
+        "document_type": "migration",
+        "source_ref": "old-name.md"
+      },
+      "text": "Customer v1 response includes full_name. Keep the full_name response mapping.",
+      "source_id": "39e285f0-1041-5310-82d0-385255b52791"
+    },
+    {
+      "key": "other-provider",
+      "split": "development",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "metadata": {
+        "provider": "warehouse",
+        "api_version": "v2",
+        "document_type": "migration",
+        "source_ref": "other-provider.md"
+      },
+      "text": "Customer display_name is not supported by the warehouse provider.",
+      "source_id": "4332cd78-10c4-5aa8-a76b-cd1dffccef8b"
+    },
+    {
+      "key": "other-project",
+      "split": "development",
+      "project_id": "22222222-2222-4222-8222-222222222222",
+      "metadata": {
+        "provider": "customer-demo",
+        "api_version": "v2",
+        "document_type": "migration",
+        "source_ref": "other-project.md"
+      },
+      "text": "Customer full_name migration: preserve the old field in this different project.",
+      "source_id": "c2ed09f4-90e3-5bcb-8ae3-7879dbc31643"
+    },
+    {
+      "key": "currency",
+      "split": "held_out",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "metadata": {
+        "provider": "billing-demo",
+        "api_version": "v2",
+        "document_type": "migration",
+        "source_ref": "currency.md"
+      },
+      "text": "Invoice currency is now required when creating an invoice. Supply a three-letter currency code.",
+      "source_id": "4cb5d193-c8bd-5f12-8aea-881a3676db08"
+    },
+    {
+      "key": "idempotency",
+      "split": "held_out",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "metadata": {
+        "provider": "billing-demo",
+        "api_version": "v2",
+        "document_type": "guide",
+        "source_ref": "idempotency.md"
+      },
+      "text": "Invoice retries require the original Idempotency-Key to prevent duplicate invoice creation.",
+      "source_id": "3eed6eee-2130-5b9e-bf97-9b27db575631"
+    },
+    {
+      "key": "idempotency-reference",
+      "split": "held_out",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "metadata": {
+        "provider": "billing-demo",
+        "api_version": "v2",
+        "document_type": "reference",
+        "source_ref": "idempotency-reference.md"
+      },
+      "text": "Idempotency-Key identifies one invoice creation attempt. Reuse it when retrying that attempt.",
+      "source_id": "54e0c81f-2571-5039-bcbe-f1a95d74dd93"
+    }
+  ],
+  "retrieval_cases": [
+    {
+      "id": "name-migration",
+      "split": "development",
+      "kind": "positive",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "question": "How should the consumer map customer names in v2?",
+      "request": {
+        "query": "customer",
+        "api_version": "v2",
+        "provider": "customer-demo",
+        "limit": 5,
+        "document_type": "migration"
+      },
+      "relevant_source_ids": [
+        "df67629f-3a7d-5295-9ca6-e5add896a327"
+      ],
+      "rationale": "Only the v2 customer migration describes the field replacement; older versions and other scopes are distractors."
+    },
+    {
+      "id": "cursor",
+      "split": "development",
+      "kind": "positive",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "question": "How does the consumer fetch another page?",
+      "request": {
+        "query": "next_cursor",
+        "api_version": "v2",
+        "provider": "customer-demo",
+        "limit": 5
+      },
+      "relevant_source_ids": [
+        "1092d6a0-38a0-508a-ba07-8807f860e5ae"
+      ],
+      "rationale": "The cursor document specifies the continuation condition."
+    },
+    {
+      "id": "retry-ambiguous",
+      "split": "development",
+      "kind": "ambiguous",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "question": "What should happen after rate limiting?",
+      "request": {
+        "query": "429",
+        "api_version": "v2",
+        "provider": "customer-demo",
+        "limit": 5
+      },
+      "relevant_source_ids": [
+        "ce714c76-b652-5eee-af77-67404e1dd943",
+        "ec1fbc67-3aaf-54e1-a1dc-a238b30f96c4"
+      ],
+      "rationale": "Both the guide and reference explain the same header; neither is the sole relevant answer."
+    },
+    {
+      "id": "unknown-oauth",
+      "split": "development",
+      "kind": "negative",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "question": "How do we rotate OAuth refresh tokens?",
+      "request": {
+        "query": "oauth refresh token",
+        "api_version": "v2",
+        "provider": "customer-demo",
+        "limit": 5
+      },
+      "relevant_source_ids": [],
+      "rationale": "No document describes OAuth; do not fabricate an answer."
+    },
+    {
+      "id": "guide-filter",
+      "split": "development",
+      "kind": "positive",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "question": "Which retry guidance applies?",
+      "request": {
+        "query": "retry",
+        "api_version": "v2",
+        "provider": "customer-demo",
+        "limit": 5,
+        "document_type": "guide"
+      },
+      "relevant_source_ids": [
+        "ce714c76-b652-5eee-af77-67404e1dd943"
+      ],
+      "rationale": "The guide filter excludes the reference."
+    },
+    {
+      "id": "invoice-currency",
+      "split": "held_out",
+      "kind": "positive",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "question": "What input does invoice creation require?",
+      "request": {
+        "query": "currency",
+        "api_version": "v2",
+        "provider": "billing-demo",
+        "limit": 5
+      },
+      "relevant_source_ids": [
+        "4cb5d193-c8bd-5f12-8aea-881a3676db08"
+      ],
+      "rationale": "The migration explicitly requires currency."
+    },
+    {
+      "id": "invoice-retry",
+      "split": "held_out",
+      "kind": "ambiguous",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "question": "How can invoice retries avoid duplicate creation?",
+      "request": {
+        "query": "Idempotency-Key",
+        "api_version": "v2",
+        "provider": "billing-demo",
+        "limit": 5
+      },
+      "relevant_source_ids": [
+        "3eed6eee-2130-5b9e-bf97-9b27db575631",
+        "54e0c81f-2571-5039-bcbe-f1a95d74dd93"
+      ],
+      "rationale": "The guide and reference independently explain key reuse."
+    },
+    {
+      "id": "invoice-refund",
+      "split": "held_out",
+      "kind": "negative",
+      "project_id": "11111111-1111-4111-8111-111111111111",
+      "question": "How are partial invoice refunds requested?",
+      "request": {
+        "query": "partial refund",
+        "api_version": "v2",
+        "provider": "billing-demo",
+        "limit": 5
+      },
+      "relevant_source_ids": [],
+      "rationale": "Refunds are absent from the held-out billing corpus."
+    }
+  ],
+  "contract_cases": [
+    {
+      "id": "endpoint-removal",
+      "split": "development",
+      "baseline": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "Synthetic evaluation API",
+          "version": "1"
+        },
+        "paths": {
+          "/customers": {
+            "post": {
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "OK"
+                }
+              }
+            }
+          }
+        }
+      },
+      "candidate": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "Synthetic evaluation API",
+          "version": "1"
+        },
+        "paths": {}
+      },
+      "expected_changes": [
+        {
+          "rule_id": "api-path-removed-without-deprecation",
+          "severity": "breaking",
+          "operation": "POST",
+          "path": "/customers"
+        }
+      ],
+      "rationale": "Removing a supported operation breaks callers."
+    },
+    {
+      "id": "required-input",
+      "split": "development",
+      "baseline": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "Synthetic evaluation API",
+          "version": "1"
+        },
+        "paths": {
+          "/customers": {
+            "post": {
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "OK"
+                }
+              }
+            }
+          }
+        }
+      },
+      "candidate": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "Synthetic evaluation API",
+          "version": "1"
+        },
+        "paths": {
+          "/customers": {
+            "post": {
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "OK"
+                }
+              }
+            }
+          }
+        }
+      },
+      "expected_changes": [
+        {
+          "rule_id": "request-property-became-required",
+          "severity": "breaking",
+          "operation": "POST",
+          "path": "/customers"
+        }
+      ],
+      "rationale": "Making an existing optional input required rejects previously valid requests."
+    },
+    {
+      "id": "optional-input",
+      "split": "development",
+      "baseline": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "Synthetic evaluation API",
+          "version": "1"
+        },
+        "paths": {
+          "/customers": {
+            "post": {
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "OK"
+                }
+              }
+            }
+          }
+        }
+      },
+      "candidate": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "Synthetic evaluation API",
+          "version": "1"
+        },
+        "paths": {
+          "/customers": {
+            "post": {
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "locale": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "OK"
+                }
+              }
+            }
+          }
+        }
+      },
+      "expected_changes": [
+        {
+          "rule_id": "new-optional-request-property",
+          "severity": "non_breaking",
+          "operation": "POST",
+          "path": "/customers"
+        }
+      ],
+      "rationale": "Adding an optional input preserves existing requests."
+    },
+    {
+      "id": "unchanged",
+      "split": "development",
+      "baseline": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "Synthetic evaluation API",
+          "version": "1"
+        },
+        "paths": {
+          "/customers": {
+            "post": {
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "OK"
+                }
+              }
+            }
+          }
+        }
+      },
+      "candidate": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "Synthetic evaluation API",
+          "version": "1"
+        },
+        "paths": {
+          "/customers": {
+            "post": {
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "OK"
+                }
+              }
+            }
+          }
+        }
+      },
+      "expected_changes": [],
+      "rationale": "Identical contracts have no changes."
+    },
+    {
+      "id": "documentation-only",
+      "split": "held_out",
+      "baseline": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "Synthetic evaluation API",
+          "version": "1"
+        },
+        "paths": {
+          "/customers": {
+            "post": {
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "OK"
+                }
+              }
+            }
+          }
+        }
+      },
+      "candidate": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "Synthetic evaluation API",
+          "version": "1",
+          "description": "Documentation only"
+        },
+        "paths": {
+          "/customers": {
+            "post": {
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "OK"
+                }
+              }
+            }
+          }
+        }
+      },
+      "expected_changes": [],
+      "rationale": "Description changes do not change the wire contract."
+    },
+    {
+      "id": "response-rename",
+      "split": "held_out",
+      "baseline": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "Synthetic Customer API",
+          "version": "1.0"
+        },
+        "paths": {
+          "/customers": {
+            "get": {
+              "responses": {
+                "200": {
+                  "description": "A synthetic customer",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "full_name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "full_name"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "candidate": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "Synthetic Customer API",
+          "version": "2.0"
+        },
+        "paths": {
+          "/customers": {
+            "get": {
+              "responses": {
+                "200": {
+                  "description": "A synthetic customer",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "display_name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "display_name"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "expected_changes": [
+        {
+          "rule_id": "response-required-property-removed",
+          "severity": "breaking",
+          "operation": "GET",
+          "path": "/customers"
+        },
+        {
+          "rule_id": "response-required-property-added",
+          "severity": "non_breaking",
+          "operation": "GET",
+          "path": "/customers"
+        }
+      ],
+      "rationale": "Treat the apparent rename as removal plus addition; never infer semantic rename equivalence."
+    }
+  ]
+}
+

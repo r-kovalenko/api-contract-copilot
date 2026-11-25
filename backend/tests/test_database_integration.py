@@ -1119,3 +1119,29 @@ def test_hybrid_ranking_filters_and_source_failures(migrated, monkeypatch):
             scoped.setattr(f"app.knowledge.{source}", unavailable)
             with pytest.raises(KnowledgeError, match="knowledge_unavailable"):
                 service.search(request)
+
+
+def test_evaluation_citation_ids_reproduce_real_ingestion(migrated):
+    from app.db.models import DocumentChunk
+    from app.document_service import ingest_document
+    from evaluation.dataset import load_dataset
+
+    data = load_dataset()
+    with session_scope(migrated) as session:
+        session.add_all(
+            [
+                Project(id=pid, name="Synthetic evaluation")
+                for pid in {d.project_id for d in data.documents}
+            ]
+        )
+    for fixture in data.documents:
+        with session_scope(migrated) as session:
+            doc, created = ingest_document(
+                session, fixture.project_id, fixture.metadata, fixture.text.encode(), "text/plain"
+            )
+            assert created
+        with session_scope(migrated) as session:
+            chunk = session.scalar(select(DocumentChunk).where(DocumentChunk.document_id == doc.id))
+            assert chunk.id == fixture.source_id
+            assert chunk.content == fixture.text
+            assert chunk.start_char == 0 and chunk.end_char == len(fixture.text)
