@@ -90,3 +90,11 @@ Follow [the offline embedding walkthrough](embeddings.md) after ingesting a docu
 Check unindexed status, index it, and repeat the request to verify an unchanged saved
 snapshot. This API checkpoint prepares hybrid retrieval (#46); it introduces no live
 model calls or browser screen. Pause for review before implementing ranking.
+
+## Hybrid retrieval checkpoint (#46)
+
+Use `mode=hybrid` on the knowledge search API or tool after indexing documents.
+Follow [the ranking and failure-policy walkthrough](document-retrieval.md#hybrid-retrieval-checkpoint-46).
+This combines filtered keyword and compatible vector candidates with deterministic RRF.
+The default fake provider demonstrates mechanics only; keyword remains the default.
+Pause for review before the evaluation dataset task (#47).
