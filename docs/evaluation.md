@@ -73,3 +73,57 @@ claim Recall@5 >=80%, semantic embedding quality, or broad API coverage. The sma
 corpus omits many real-world patterns and long multi-chunk documents. The default embedding
 provider remains synthetic. Scoring commands, per-case evaluation reports and deliberate
 retrieval-regression gates belong to #48; no live-provider evaluation is triggered here.
+
+## Run evaluation and inspect reports (#48)
+
+From `backend`, set `TEST_DATABASE_URL` to an **empty, disposable** PostgreSQL/pgvector
+database whose name ends in `_test`, using the same connection format as the README's
+test setup. Never use the application database. Then run:
+
+```powershell
+python -m evaluation.run --output evaluation-results/report.json
+$LASTEXITCODE
+Get-Content evaluation-results/report.json
+```
+
+The runner refuses existing tables, migrates its empty database, ingests the full synthetic
+corpus, indexes it with the explicit offline SHA-256 provider, and runs real keyword and
+hybrid searches plus pinned oasdiff comparisons. It removes its application tables and its own Alembic version table afterward
+and retains the shared vector extension. A failed setup may require inspecting/recreating
+this disposable database; it never bypasses the empty-database check on retry. No model
+provider is selected from environment configuration, so live keys cannot enable paid calls.
+
+Exit codes: **0** all gates pass; **1** a completed evaluation detects regression; **2**
+setup/storage/validation failure. Operational failures emit a generic error artifact without
+connection details. A failed report write also exits nonzero. CI runs the same command before
+tests and uploads `evaluation-results/report.json` as the `evaluation-results` artifact for
+seven days, including failed evaluations. Existing required CI and security gates remain.
+
+### Metrics and gates
+
+- Retrieval scores the first five returned IDs against each case's relevant set. Recall@5
+  is relevant IDs found divided by relevant IDs expected. Missing and unexpected IDs are
+  saved per case. Duplicate IDs, more than five hits, and out-of-scope IDs fail validation.
+- Macro Recall@5 is reported separately for development/held-out and keyword/hybrid.
+  Each positive/ambiguous case and each split/mode aggregate must reach **80%**. Per-case
+  gates prevent an average from hiding a regression; with the current one/two-source cases,
+  this effectively requires every relevant source. Absent positive cases cannot pass.
+- Negative cases have `recall_at_5: null` and are excluded from recall averages. Keyword
+  negatives must return no results. Hybrid negatives record the number of returned
+  candidates as a diagnostic: cosine retrieval is not an abstention classifier, so those
+  candidates alone do not fail the gate. Scope violations and operational errors always fail.
+- Contract precision is matching expected tuples divided by actual tuples; coverage is
+  matching tuples divided by expected tuples. Multisets detect duplicate findings. Every
+  scenario requires exact expected findings, with no missing or unexpected change, and
+  records missed breaking changes. Empty expected/actual lists score 1/1; missing all
+  expected findings scores 0/0. Empty expected with unexpected output has precision 0,
+  coverage 1 and fails. Operational errors always fail, including unchanged cases.
+
+Reports carry schema/dataset/engine/provider versions and a SHA-256 of the validated
+serialized dataset. Case IDs and split membership remain visible. Order is deterministic;
+reports omit wall-clock timestamps and credentials. Tests inject missing retrieval evidence
+and suppress breaking findings in the real database evaluation to prove failed gates.
+
+The hybrid score uses a fake provider and a tiny corpus, so passing demonstrates deterministic
+pipeline behavior, not semantic quality or production recall. Dataset 1.0.0 and its labels
+remain unchanged. Public held-out cases are regression fixtures, not a blinded benchmark.

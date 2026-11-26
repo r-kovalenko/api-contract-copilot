@@ -1145,3 +1145,54 @@ def test_evaluation_citation_ids_reproduce_real_ingestion(migrated):
             assert chunk.id == fixture.source_id
             assert chunk.content == fixture.text
             assert chunk.start_char == 0 and chunk.end_char == len(fixture.text)
+
+
+def test_evaluation_report_real_database(migrated):
+    from evaluation.dataset import load_dataset
+    from evaluation.run import evaluate
+
+    report = evaluate(migrated, load_dataset())
+    assert report.status == "passed", report.model_dump_json(indent=2)
+    assert len(report.retrieval) == 16 and len(report.contracts) == 6
+    assert all(s.macro_recall_at_5 >= 0.8 for s in report.summaries)
+    assert all(c.precision == 1 and c.coverage == 1 for c in report.contracts)
+
+
+@pytest.mark.parametrize("regression", ["retrieval", "breaking"])
+def test_evaluation_detects_deliberate_regressions(migrated, monkeypatch, regression):
+    from evaluation import run
+    from evaluation.dataset import load_dataset
+
+    if regression == "retrieval":
+        original = run.KnowledgeSearch.search
+
+        def miss(self, request):
+            return original(self, request).model_copy(update={"hits": []})
+
+        monkeypatch.setattr(run.KnowledgeSearch, "search", miss)
+    else:
+        original = run.compare_contracts
+
+        def miss(baseline, candidate):
+            result = original(baseline, candidate)
+            return result.model_copy(
+                update={"changes": [c for c in result.changes if c.severity != "breaking"]}
+            )
+
+        monkeypatch.setattr(run, "compare_contracts", miss)
+    report = run.evaluate(migrated, load_dataset())
+    assert report.status == "failed"
+    if regression == "retrieval":
+        assert any(r.missing and not r.passed for r in report.retrieval)
+    else:
+        assert any(c.missed_breaking and not c.passed for c in report.contracts)
+
+
+def test_evaluation_cli_refuses_existing_schema(migrated, monkeypatch):
+    from evaluation import run
+
+    monkeypatch.setattr(run, "migrate", lambda *args: pytest.fail("Must not migrate existing data"))
+    with pytest.raises(ValueError, match="no existing tables"):
+        run.run_database(migrated.url.render_as_string(hide_password=False))
+    with migrated.connect() as connection:
+        assert "projects" in inspect(connection).get_table_names()

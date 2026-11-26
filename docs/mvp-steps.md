@@ -104,3 +104,10 @@ Pause for review before the evaluation dataset task (#47).
 Follow [the evaluation fixture guide](evaluation.md) to validate and inspect 10 documents,
 8 retrieval cases and 6 contract scenarios. Review rationales and held-out membership.
 This checkpoint defines labels; metrics and evaluation reports follow in #48.
+
+## Offline scoring checkpoint (#48)
+
+Run the [evaluation command](evaluation.md#run-evaluation-and-inspect-reports-48) against
+an empty disposable test database. Inspect split/mode recall, negative-case diagnostics,
+and missing/unexpected contract evidence in the JSON artifact. Required CI runs this
+same gate without paid model calls. Pause for review before stateful workflow work.
