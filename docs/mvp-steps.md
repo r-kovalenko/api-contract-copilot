@@ -111,3 +111,10 @@ Run the [evaluation command](evaluation.md#run-evaluation-and-inspect-reports-48
 an empty disposable test database. Inspect split/mode recall, negative-case diagnostics,
 and missing/unexpected contract evidence in the JSON artifact. Required CI runs this
 same gate without paid model calls. Pause for review before stateful workflow work.
+
+## Session persistence checkpoint (#49)
+
+Use [the session API walkthrough](sessions.md) to save messages, link an analysis report,
+move into a waiting state and reload after restarting the backend. Verify duplicate-message
+retries and stale transition rejection. This is a persistence checkpoint; execution/resume
+and a browser conversation interface remain later work.
