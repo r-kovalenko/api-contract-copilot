@@ -251,4 +251,4 @@ the default because the embedding provider is synthetic. See the [retrieval guid
 The [versioned synthetic ground-truth corpus](docs/evaluation.md) contains retrieval
 questions with expected citation IDs, negative/ambiguous cases, held-out subsets, and
 pinned-engine contract expectations. Fixture/schema tests run in ordinary CI without
-model credentials. Retrieval quality scoring remains the next checkpoint (#48).
+model credentials. The offline evaluation command scores Recall@5 and contract precision/coverage; required CI saves per-case JSON reports and blocks regressions. See the guide for disposable-database setup and synthetic-provider limits.
