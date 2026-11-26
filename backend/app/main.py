@@ -12,10 +12,12 @@ from app.embeddings import router as embeddings_router
 from app.knowledge_api import router as knowledge_router
 from app.projects import router
 from app.request_limits import ProjectBodyLimit
+from app.workflows import router as workflows_router
 
 app = FastAPI(title="API Contract Copilot", version="0.1.0")
 app.add_middleware(ProjectBodyLimit)
 app.include_router(router)
+app.include_router(workflows_router)
 app.include_router(contracts_router)
 app.include_router(comparisons_router)
 app.include_router(documents_router)

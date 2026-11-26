@@ -137,6 +137,7 @@ class DocumentChunk(Base):
 class AnalysisRun(Base):
     __tablename__ = "analysis_runs"
     __table_args__ = (
+        UniqueConstraint("project_id", "id", name="uq_analysis_project_id"),
         ForeignKeyConstraint(
             ["project_id", "comparison_id"],
             ["contract_comparisons.project_id", "contract_comparisons.id"],
@@ -167,4 +168,89 @@ class ChunkEmbedding(Base):
     model: Mapped[str] = mapped_column(String(100))
     dimensions: Mapped[int] = mapped_column(Integer)
     embedding: Mapped[list[float]] = mapped_column(Vector())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ConversationSession(Base):
+    __tablename__ = "sessions"
+    __table_args__ = (
+        UniqueConstraint("project_id", "id", name="uq_sessions_project_id"),
+        CheckConstraint("length(btrim(title)) BETWEEN 1 AND 200", name="ck_session_title"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    project_id: Mapped[UUID] = mapped_column(
+        ForeignKey("projects.id", ondelete="RESTRICT"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class SessionMessage(Base):
+    __tablename__ = "session_messages"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["project_id", "session_id"], ["sessions.project_id", "sessions.id"], ondelete="CASCADE"
+        ),
+        UniqueConstraint("session_id", "sequence", name="uq_message_sequence"),
+        UniqueConstraint("session_id", "request_id", name="uq_message_request"),
+        CheckConstraint("sequence BETWEEN 1 AND 1000", name="ck_message_sequence"),
+        CheckConstraint("role IN ('user', 'assistant', 'system')", name="ck_message_role"),
+        CheckConstraint("length(btrim(content)) BETWEEN 1 AND 4000", name="ck_message_content"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    project_id: Mapped[UUID]
+    session_id: Mapped[UUID]
+    request_id: Mapped[UUID]
+    sequence: Mapped[int] = mapped_column(Integer)
+    role: Mapped[str] = mapped_column(String(20))
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WorkflowState(Base):
+    __tablename__ = "workflow_states"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["project_id", "session_id"], ["sessions.project_id", "sessions.id"], ondelete="CASCADE"
+        ),
+        ForeignKeyConstraint(
+            ["project_id", "analysis_id"],
+            ["analysis_runs.project_id", "analysis_runs.id"],
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "status IN ('running', 'waiting_for_user', 'waiting_for_approval', "
+            "'completed', 'failed')",
+            name="ck_workflow_status",
+        ),
+        CheckConstraint("revision >= 0", name="ck_workflow_revision"),
+        CheckConstraint("length(btrim(reason)) BETWEEN 1 AND 1000", name="ck_workflow_reason"),
+    )
+    session_id: Mapped[UUID] = mapped_column(primary_key=True)
+    project_id: Mapped[UUID]
+    analysis_id: Mapped[UUID | None]
+    status: Mapped[str] = mapped_column(String(30))
+    revision: Mapped[int] = mapped_column(Integer)
+    reason: Mapped[str] = mapped_column(String(1000))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ToolRun(Base):
+    __tablename__ = "tool_runs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["project_id", "session_id"], ["sessions.project_id", "sessions.id"], ondelete="CASCADE"
+        ),
+        CheckConstraint(
+            "operation IN ('search_code', 'search_knowledge')", name="ck_tool_run_operation"
+        ),
+        CheckConstraint("status IN ('ok', 'rejected', 'unavailable')", name="ck_tool_run_status"),
+        CheckConstraint("jsonb_typeof(result) = 'object'", name="ck_tool_run_result"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    project_id: Mapped[UUID]
+    session_id: Mapped[UUID] = mapped_column(index=True)
+    operation: Mapped[str] = mapped_column(String(30))
+    status: Mapped[str] = mapped_column(String(20))
+    result: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

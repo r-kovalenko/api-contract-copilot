@@ -252,3 +252,18 @@ The [versioned synthetic ground-truth corpus](docs/evaluation.md) contains retri
 questions with expected citation IDs, negative/ambiguous cases, held-out subsets, and
 pinned-engine contract expectations. Fixture/schema tests run in ordinary CI without
 model credentials. The offline evaluation command scores Recall@5 and contract precision/coverage; required CI saves per-case JSON reports and blocks regressions. See the guide for disposable-database setup and synthetic-provider limits.
+
+### Session and workflow storage
+
+Migration `0007_session_workflows` adds the next persistence checkpoint:
+
+| Model / table | Main fields and constraints |
+| --- | --- |
+| `ConversationSession` / `sessions` | ID, project FK, title, created_at; unique project/ID pair |
+| `SessionMessage` / `session_messages` | Session/project FK, request UUID, sequence, role, content, timestamp; unique per-session sequence/request; 1000-message cap |
+| `WorkflowState` / `workflow_states` | One per session, project, optional same-project analysis FK, five-state status, revision, reason, updated_at |
+| `ToolRun` / `tool_runs` | Session/project FK, allowlisted operation/status, result JSON and timestamp; reserved for orchestrator-recorded runs |
+
+The [session walkthrough](docs/sessions.md) covers create/history APIs, duplicate messages,
+validated transitions, stale revisions and restart persistence. This checkpoint does not
+execute tools or authorize approvals; orchestrator resume remains #50.

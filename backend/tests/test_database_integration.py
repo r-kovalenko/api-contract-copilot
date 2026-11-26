@@ -1196,3 +1196,164 @@ def test_evaluation_cli_refuses_existing_schema(migrated, monkeypatch):
         run.run_database(migrated.url.render_as_string(hide_password=False))
     with migrated.connect() as connection:
         assert "projects" in inspect(connection).get_table_names()
+
+
+@pytest.fixture
+def workflow_client(migrated, monkeypatch):
+    monkeypatch.setattr("app.projects.get_engine", lambda: migrated)
+    with TestClient(app) as client:
+        pid = client.post("/api/projects", json={"name": "Sessions"}).json()["id"]
+        yield client, pid, f"/api/projects/{pid}/sessions"
+
+
+def test_session_history_pagination_replay_and_restart(workflow_client, migrated, monkeypatch):
+    client, pid, base = workflow_client
+    first = client.post(base, json={"title": "Review customer API"})
+    assert first.status_code == 201, first.text
+    sid = first.json()["id"]
+    url = f"{base}/{sid}"
+    assert client.get(base).json() == [first.json()]
+    second = client.post(base, json={"title": "Other conversation"}).json()
+    assert client.get(base, params={"limit": 1}).json() == [second]
+    assert client.get(base, params={"limit": 1, "offset": 1}).json() == [first.json()]
+    data = {"request_id": str(uuid4()), "content": "<script>untrusted evidence</script>"}
+    message = client.post(url + "/messages", json=data)
+    assert message.status_code == 200, message.text
+    assert message.json()["role"] == "user"
+    assert message.json()["sequence"] == 1
+    assert client.post(url + "/messages", json=data).json() == message.json()
+    assert client.post(url + "/messages", json=data | {"content": "changed"}).status_code == 409
+    next_message = client.post(
+        url + "/messages", json={"request_id": str(uuid4()), "content": "Follow-up"}
+    ).json()
+    assert next_message["sequence"] == 2
+    assert client.get(url + "/messages", params={"limit": 1, "offset": 1}).json() == [next_message]
+    state = client.get(url + "/workflow").json()
+    assert state["status"] == "running" and state["revision"] == 0
+    assert client.get(url + "/tool-runs").json() == []
+    assert client.post(url + "/tool-runs", json={}).status_code == 405
+    # A fresh connection pool and app client must reload persisted records.
+    fresh = create_database_engine(migrated.url)
+    monkeypatch.setattr("app.projects.get_engine", lambda: fresh)
+    try:
+        with TestClient(app) as restarted:
+            assert restarted.get(url + "/workflow").json() == state
+            assert restarted.get(url + "/messages").json() == [message.json(), next_message]
+    finally:
+        fresh.dispose()
+    monkeypatch.setattr("app.projects.get_engine", lambda: migrated)
+    other = client.post("/api/projects", json={"name": "Other"}).json()["id"]
+    other_url = f"/api/projects/{other}/sessions/{sid}"
+    for suffix in ("", "/messages", "/workflow", "/tool-runs"):
+        assert client.get(other_url + suffix).status_code == 404
+    assert client.post(other_url + "/messages", json=data).status_code == 404
+    assert (
+        client.post(
+            other_url + "/workflow/transitions",
+            json={"expected_revision": 0, "status": "failed", "reason": "x"},
+        ).status_code
+        == 404
+    )
+    assert client.get(url + "/messages", params={"limit": 101}).status_code == 422
+
+
+def test_workflow_transition_matrix_and_revision_protection(workflow_client):
+    client, pid, base = workflow_client
+    allowed = {
+        "running": {"waiting_for_user", "waiting_for_approval", "completed", "failed"},
+        "waiting_for_user": {"running", "failed"},
+        "waiting_for_approval": {"failed"},
+        "completed": set(),
+        "failed": set(),
+    }
+    for source in allowed:
+        for target in allowed:
+            sid = client.post(base, json={"title": "Transition test"}).json()["id"]
+            url = f"{base}/{sid}/workflow"
+            revision = 0
+            if source != "running":
+                initial = client.post(
+                    url + "/transitions",
+                    json={"expected_revision": 0, "status": source, "reason": "Initial checkpoint"},
+                )
+                assert initial.status_code == 200
+                revision = 1
+            before = client.get(url).json()
+            data = {"expected_revision": revision, "status": target, "reason": "Next checkpoint"}
+            response = client.post(url + "/transitions", json=data)
+            assert response.status_code == (200 if target in allowed[source] else 409), (
+                response.text
+            )
+            if response.status_code == 200:
+                assert response.json()["revision"] == revision + 1
+                assert client.post(url + "/transitions", json=data).status_code == 409
+            else:
+                assert client.get(url).json() == before
+
+
+def test_concurrent_session_writes_are_serialized(workflow_client):
+    from concurrent.futures import ThreadPoolExecutor
+
+    client, pid, base = workflow_client
+    sid = client.post(base, json={"title": "Concurrent"}).json()["id"]
+    url = f"{base}/{sid}"
+    data = {"request_id": str(uuid4()), "content": "one message"}
+
+    def post_message(_):
+        with TestClient(app) as concurrent:
+            return concurrent.post(url + "/messages", json=data)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(post_message, range(2)))
+    assert responses[0].json() == responses[1].json()
+    assert len(client.get(url + "/messages").json()) == 1
+
+    def post_transition(target):
+        with TestClient(app) as concurrent:
+            return concurrent.post(
+                url + "/workflow/transitions",
+                json={"expected_revision": 0, "status": target, "reason": "race"},
+            ).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(post_transition, ["completed", "failed"])) == [200, 409]
+
+
+def test_session_links_existing_analysis_with_project_boundary(analysis_context):
+    client, pid, data, _, _ = analysis_context
+    analysis = client.post(f"/api/projects/{pid}/analyses", json=data).json()
+    other = client.post("/api/projects", json={"name": "Other"}).json()["id"]
+    payload = {"title": "Linked report", "analysis_id": analysis["id"]}
+    assert client.post(f"/api/projects/{other}/sessions", json=payload).status_code == 404
+    created = client.post(f"/api/projects/{pid}/sessions", json=payload)
+    assert created.status_code == 201, created.text
+    url = f"/api/projects/{pid}/sessions/{created.json()['id']}/workflow"
+    assert client.get(url).json()["analysis_id"] == analysis["id"]
+
+
+def test_session_failed_commit_rolls_back(workflow_client):
+    from unittest.mock import patch
+
+    from sqlalchemy.exc import OperationalError
+
+    client, pid, base = workflow_client
+    sid = client.post(base, json={"title": "Rollback"}).json()["id"]
+    url = f"{base}/{sid}"
+    before = client.get(url + "/workflow").json()
+    with patch(
+        "sqlalchemy.orm.Session.commit",
+        side_effect=OperationalError("private", {}, Exception("secret")),
+    ):
+        response = client.post(
+            url + "/workflow/transitions",
+            json={"expected_revision": 0, "status": "completed", "reason": "x"},
+        )
+        assert response.status_code == 503 and "secret" not in response.text
+        assert (
+            client.post(
+                url + "/messages", json={"request_id": str(uuid4()), "content": "rollback"}
+            ).status_code
+            == 503
+        )
+    assert client.get(url + "/workflow").json() == before
+    assert client.get(url + "/messages").json() == []
