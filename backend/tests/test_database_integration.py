@@ -1357,3 +1357,265 @@ def test_session_failed_commit_rolls_back(workflow_client):
         )
     assert client.get(url + "/workflow").json() == before
     assert client.get(url + "/messages").json() == []
+
+
+@pytest.fixture
+def execution_client(workflow_client, migrated, monkeypatch):
+    client, pid, base = workflow_client
+    monkeypatch.setattr("app.orchestration_api.get_engine", lambda: migrated)
+    sid = client.post(base, json={"title": "Resumable evidence"}).json()["id"]
+    step = {"operation": "search_knowledge", "query": "customer", "api_version": "v2", "limit": 5}
+    return client, pid, sid, f"{base}/{sid}/execution", step
+
+
+def test_execution_resume_restart_and_no_replay(execution_client, migrated, monkeypatch):
+    client, pid, sid, url, step = execution_client
+    doc = client.post(
+        f"/api/projects/{pid}/documents",
+        params={
+            "provider": "demo",
+            "api_version": "v2",
+            "document_type": "guide",
+            "source_ref": "guide.md",
+        },
+        content="customer guidance",
+        headers={"Content-Type": "text/plain"},
+    )
+    assert doc.status_code == 201
+    start = client.post(url, json={"steps": [step, step]}).json()
+    assert start["next_step"] == 0
+    assert client.post(url, json={"steps": [step, step]}).json() == start
+    assert client.post(url, json={"steps": [step]}).status_code == 409
+    first = client.post(url + "/resume", json={"expected_revision": start["workflow"]["revision"]})
+    assert first.status_code == 200, first.text
+    first = first.json()
+    assert first["next_step"] == 1 and len(first["results"]) == 1
+    assert first["results"][0]["response"]["result"]["hits"][0]["snippet"] == "customer guidance"
+    paused = client.post(
+        url + "/pause", json={"expected_revision": first["workflow"]["revision"]}
+    ).json()
+    assert paused["workflow"]["status"] == "waiting_for_user"
+    # New pool simulates restart; persisted cursor skips the first step.
+    fresh = create_database_engine(migrated.url)
+    monkeypatch.setattr("app.orchestration_api.get_engine", lambda: fresh)
+    try:
+        with TestClient(app) as restarted:
+            assert restarted.get(url).json() == paused
+            done = restarted.post(
+                url + "/resume", json={"expected_revision": paused["workflow"]["revision"]}
+            )
+            assert done.status_code == 200, done.text
+            done = done.json()
+            assert done["workflow"]["status"] == "completed"
+            assert [r["step_index"] for r in done["results"]] == [0, 1]
+            assert done["summary"]["status"] == "evidence_ready"
+            assert len(done["summary"]["source_ids"]) == 1
+            assert (
+                restarted.post(
+                    url + "/resume", json={"expected_revision": done["workflow"]["revision"]}
+                ).status_code
+                == 409
+            )
+    finally:
+        fresh.dispose()
+    monkeypatch.setattr("app.orchestration_api.get_engine", lambda: migrated)
+    assert (
+        client.post(
+            url.replace("/execution", "/workflow/transitions"),
+            json={
+                "expected_revision": done["workflow"]["revision"],
+                "status": "running",
+                "reason": "bypass",
+            },
+        ).status_code
+        == 409
+    )
+    other = client.post("/api/projects", json={"name": "Other"}).json()["id"]
+    other_url = url.replace(pid, other)
+    for method, suffix, body in (
+        ("get", "", None),
+        ("post", "/resume", {"expected_revision": 0}),
+        ("post", "", {"steps": [step]}),
+        ("post", "/cancel", {"expected_revision": 0}),
+    ):
+        response = (
+            client.get(other_url) if method == "get" else client.post(other_url + suffix, json=body)
+        )
+        assert response.status_code == 404
+
+
+def test_execution_retry_budget_and_saved_timeouts(execution_client, monkeypatch):
+    from app.tool_registry import ToolUnavailable
+
+    client, pid, sid, url, step = execution_client
+    calls = []
+
+    class Down:
+        def invoke(self, payload):
+            calls.append(payload)
+            return ToolUnavailable(code="timeout")
+
+    monkeypatch.setattr("app.orchestration.registry_for", lambda *args: Down())
+    result = client.post(url, json={"steps": [step]}).json()
+    for attempt in (1, 2):
+        response = client.post(
+            url + "/resume", json={"expected_revision": result["workflow"]["revision"]}
+        )
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert len(result["results"]) == attempt
+    assert len(calls) == 2
+    assert result["workflow"]["status"] == "completed"
+    assert result["summary"]["evidence_gaps"] == ["step_0:timeout"]
+    assert (
+        client.post(
+            url + "/resume", json={"expected_revision": result["workflow"]["revision"]}
+        ).status_code
+        == 409
+    )
+    assert len(calls) == 2
+
+
+def test_expired_claims_recover_without_unbounded_replay(execution_client, migrated):
+    from datetime import UTC, datetime, timedelta
+    from uuid import UUID
+
+    from app.db.models import WorkflowExecution
+    from app.orchestration import claim_step
+
+    client, pid, sid, url, step = execution_client
+    start = client.post(url, json={"steps": [step]}).json()
+    claim_step(migrated, UUID(pid), UUID(sid), start["workflow"]["revision"])
+
+    def expire():
+        with session_scope(migrated) as db:
+            db.get(WorkflowExecution, UUID(sid)).lease_expires = datetime.now(UTC) - timedelta(
+                seconds=1
+            )
+
+    expire()
+    snapshot = client.get(url).json()
+    claim_step(migrated, UUID(pid), UUID(sid), snapshot["workflow"]["revision"])
+    snapshot = client.get(url).json()
+    assert snapshot["attempts"] == 2
+    assert snapshot["results"][0]["response"]["code"] == "timeout"
+    expire()
+    done = client.post(
+        url + "/resume", json={"expected_revision": snapshot["workflow"]["revision"]}
+    ).json()
+    assert done["workflow"]["status"] == "completed"
+    assert [r["attempt"] for r in done["results"]] == [1, 2]
+    assert done["summary"]["evidence_gaps"] == ["step_0:timeout"]
+
+
+def test_concurrent_resume_and_cancellation_fence_results(execution_client, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    from app.tool_registry import ToolUnavailable
+
+    client, pid, sid, url, step = execution_client
+    entered, release = Event(), Event()
+
+    class Blocking:
+        def invoke(self, payload):
+            entered.set()
+            assert release.wait(10)
+            return ToolUnavailable(code="timeout")
+
+    monkeypatch.setattr("app.orchestration.registry_for", lambda *args: Blocking())
+    start = client.post(url, json={"steps": [step]}).json()
+
+    def resume():
+        with TestClient(app) as worker:
+            return worker.post(
+                url + "/resume", json={"expected_revision": start["workflow"]["revision"]}
+            )
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pending = pool.submit(resume)
+        try:
+            assert entered.wait(10)
+            snapshot = client.get(url).json()
+            assert (
+                client.post(
+                    url + "/resume", json={"expected_revision": snapshot["workflow"]["revision"]}
+                ).status_code
+                == 409
+            )
+            assert (
+                client.post(
+                    url + "/pause", json={"expected_revision": snapshot["workflow"]["revision"]}
+                ).status_code
+                == 409
+            )
+            cancelled = client.post(
+                url + "/cancel", json={"expected_revision": snapshot["workflow"]["revision"]}
+            )
+            assert cancelled.status_code == 200
+        finally:
+            release.set()
+        assert pending.result().status_code == 409
+    saved = client.get(url).json()
+    assert saved["workflow"]["status"] == "failed"
+    assert saved["results"] == []
+    assert saved["summary"]["evidence_gaps"] == ["cancelled"]
+
+
+def test_execution_cannot_bypass_approval_wait(execution_client, migrated):
+    from uuid import UUID
+
+    from app.db.models import WorkflowState
+
+    client, pid, sid, url, step = execution_client
+    client.post(url, json={"steps": [step]})
+    # Simulate a trusted future orchestrator entering an approval wait.
+    with session_scope(migrated) as db:
+        db.get(WorkflowState, UUID(sid)).status = "waiting_for_approval"
+    state = client.get(url).json()
+    assert (
+        client.post(
+            url + "/resume", json={"expected_revision": state["workflow"]["revision"]}
+        ).status_code
+        == 409
+    )
+
+
+def test_execution_result_storage_failure_keeps_durable_claim(
+    execution_client, migrated, monkeypatch
+):
+    from datetime import UTC, datetime, timedelta
+    from uuid import UUID
+
+    from sqlalchemy.exc import OperationalError
+
+    from app import orchestration
+    from app.db.models import WorkflowExecution
+
+    client, pid, sid, url, step = execution_client
+    start = client.post(url, json={"steps": [step]}).json()
+    original = orchestration.record_result
+
+    def fail_after_flush(*args):
+        original(*args)
+        raise OperationalError("private", {}, Exception("secret"))
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(orchestration, "record_result", fail_after_flush)
+        response = client.post(
+            url + "/resume", json={"expected_revision": start["workflow"]["revision"]}
+        )
+        assert response.status_code == 503 and "secret" not in response.text
+    snapshot = client.get(url).json()
+    assert snapshot["next_step"] == 0 and snapshot["attempts"] == 1
+    assert snapshot["results"] == [] and snapshot["lease_expires"]
+    with session_scope(migrated) as db:
+        db.get(WorkflowExecution, UUID(sid)).lease_expires = datetime.now(UTC) - timedelta(
+            seconds=1
+        )
+    recovered = client.post(
+        url + "/resume", json={"expected_revision": snapshot["workflow"]["revision"]}
+    )
+    assert recovered.status_code == 200, recovered.text
+    assert recovered.json()["workflow"]["status"] == "completed"
+    assert [r["attempt"] for r in recovered.json()["results"]] == [1, 2]

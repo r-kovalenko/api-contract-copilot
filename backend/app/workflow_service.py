@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.contracts import require_project
 from app.db import workflows as repository
 from app.db.analyses import get_analysis
-from app.db.models import ConversationSession, SessionMessage, WorkflowState
+from app.db.models import ConversationSession, SessionMessage, WorkflowExecution, WorkflowState
 from app.workflow_schemas import (
     MessageCreate,
     MessageView,
@@ -87,6 +87,8 @@ def append_message(
 
 def transition(db: Session, project_id: UUID, session_id: UUID, data: Transition) -> WorkflowView:
     require_session(db, project_id, session_id, lock=True)
+    if db.get(WorkflowExecution, session_id) is not None:
+        raise HTTPException(409, "Managed execution requires its resume/pause/cancel endpoints")
     row = repository.workflow(db, project_id, session_id)
     if row.revision != data.expected_revision:
         raise HTTPException(409, "Workflow changed; reload before submitting another transition")

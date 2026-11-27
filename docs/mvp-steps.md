@@ -118,3 +118,10 @@ Use [the session API walkthrough](sessions.md) to save messages, link an analysi
 move into a waiting state and reload after restarting the backend. Verify duplicate-message
 retries and stale transition rejection. This is a persistence checkpoint; execution/resume
 and a browser conversation interface remain later work.
+
+## Orchestrator recovery checkpoint (#50)
+
+Follow [the resumable execution walkthrough](orchestration.md): start a two-step read plan,
+run one step, pause, restart and resume without replaying the saved result. Inspect attempt
+history and evidence gaps. Cancellation and exhausted retries are explicit; write approvals
+and migration-agent planning remain separate checkpoints.

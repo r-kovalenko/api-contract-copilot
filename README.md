@@ -267,3 +267,12 @@ Migration `0007_session_workflows` adds the next persistence checkpoint:
 The [session walkthrough](docs/sessions.md) covers create/history APIs, duplicate messages,
 validated transitions, stale revisions and restart persistence. This checkpoint does not
 execute tools or authorize approvals; orchestrator resume remains #50.
+
+### Resumable workflow execution
+
+Migration `0008_workflow_execution` adds `WorkflowExecution` / `workflow_executions`:
+project/session FK, immutable plan JSON, next-step cursor, bounded attempt count, claim UUID,
+lease expiry and evidence summary. `ToolRun` adds step index/attempt and uniqueness per
+session/step/attempt. The [orchestration walkthrough](docs/orchestration.md) covers explicit
+resume, pause, cancellation, restart recovery and failure gaps. Only existing read-only
+tools execute; approval waits remain blocked and live model calls are not introduced.
