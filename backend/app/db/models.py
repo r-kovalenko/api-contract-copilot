@@ -238,6 +238,7 @@ class WorkflowState(Base):
 class ToolRun(Base):
     __tablename__ = "tool_runs"
     __table_args__ = (
+        UniqueConstraint("session_id", "step_index", "attempt", name="uq_tool_step_attempt"),
         ForeignKeyConstraint(
             ["project_id", "session_id"], ["sessions.project_id", "sessions.id"], ondelete="CASCADE"
         ),
@@ -250,7 +251,33 @@ class ToolRun(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     project_id: Mapped[UUID]
     session_id: Mapped[UUID] = mapped_column(index=True)
+    step_index: Mapped[int | None] = mapped_column(Integer)
+    attempt: Mapped[int | None] = mapped_column(Integer)
     operation: Mapped[str] = mapped_column(String(30))
     status: Mapped[str] = mapped_column(String(20))
     result: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WorkflowExecution(Base):
+    __tablename__ = "workflow_executions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["project_id", "session_id"], ["sessions.project_id", "sessions.id"], ondelete="CASCADE"
+        ),
+        CheckConstraint(
+            "jsonb_typeof(plan) = 'array' AND jsonb_array_length(plan) BETWEEN 1 AND 5",
+            name="ck_execution_plan",
+        ),
+        CheckConstraint("cursor BETWEEN 0 AND 5", name="ck_execution_cursor"),
+        CheckConstraint("attempts BETWEEN 0 AND 2", name="ck_execution_attempts"),
+        CheckConstraint("(lease_id IS NULL) = (lease_expires IS NULL)", name="ck_execution_lease"),
+    )
+    session_id: Mapped[UUID] = mapped_column(primary_key=True)
+    project_id: Mapped[UUID]
+    plan: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    cursor: Mapped[int] = mapped_column(Integer)
+    attempts: Mapped[int] = mapped_column(Integer)
+    lease_id: Mapped[UUID | None]
+    lease_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    summary: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
