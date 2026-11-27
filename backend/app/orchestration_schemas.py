@@ -6,7 +6,14 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.tool_registry import SearchCodeCall, SearchKnowledgeCall, ToolResponse
+from app.tool_registry import (
+    KnowledgeEvidence,
+    SearchCodeCall,
+    SearchKnowledgeCall,
+    ToolEvidence,
+    ToolRejected,
+    ToolUnavailable,
+)
 from app.workflow_schemas import WorkflowView
 
 Step = Annotated[SearchCodeCall | SearchKnowledgeCall, Field(discriminator="operation")]
@@ -39,7 +46,7 @@ class EvidenceSummary(BaseModel):
 class AttemptView(BaseModel):
     step_index: int
     attempt: int
-    response: ToolResponse
+    response: ToolEvidence | KnowledgeEvidence | ToolRejected | ToolUnavailable
 
 
 class ExecutionView(BaseModel):
