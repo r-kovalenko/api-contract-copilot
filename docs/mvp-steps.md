@@ -125,3 +125,10 @@ Follow [the resumable execution walkthrough](orchestration.md): start a two-step
 run one step, pause, restart and resume without replaying the saved result. Inspect attempt
 history and evidence gaps. Cancellation and exhausted retries are explicit; write approvals
 and migration-agent planning remain separate checkpoints.
+
+## Step 51: Advisory migration plans
+
+Generate a plan from a saved analysis, inspect ordered evidence references, test checklist,
+open questions and proposed task data, then reload the saved snapshot. See the
+[migration-plan walkthrough](migration-plans.md). Validate missing evidence and project
+isolation. No write tools or live providers execute; clarification resume follows in #52.

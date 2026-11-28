@@ -276,3 +276,11 @@ lease expiry and evidence summary. `ToolRun` adds step index/attempt and uniquen
 session/step/attempt. The [orchestration walkthrough](docs/orchestration.md) covers explicit
 resume, pause, cancellation, restart recovery and failure gaps. Only existing read-only
 tools execute; approval waits remain blocked and live model calls are not introduced.
+
+### Migration plan storage
+
+Migration `0009_migration_plans` adds `MigrationPlanRecord` / `migration_plans` with
+UUID ID, project/analysis composite foreign key, immutable plan JSONB and timestamp.
+The [migration-plan walkthrough](docs/migration-plans.md) generates saved advisory steps,
+test checklists, open questions and task proposals from an impact analysis. Plans use
+offline evidence-bound templates and require review; no task or source-code writes execute.

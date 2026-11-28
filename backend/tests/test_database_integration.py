@@ -1619,3 +1619,107 @@ def test_execution_result_storage_failure_keeps_durable_claim(
     assert recovered.status_code == 200, recovered.text
     assert recovered.json()["workflow"]["status"] == "completed"
     assert [r["attempt"] for r in recovered.json()["results"]] == [1, 2]
+
+
+def test_migration_plan_snapshot_and_isolation(analysis_context):
+    client, pid, data, change, root = analysis_context
+    analysis = client.post(f"/api/projects/{pid}/analyses", json=data).json()
+    url = f"/api/projects/{pid}/migration-plans"
+    response = client.post(url, json={"analysis_id": analysis["id"]})
+    assert response.status_code == 201, response.text
+    view = response.json()
+    plan = view["plan"]
+    assert plan["status"] == "needs_review"
+    assert [s["order"] for s in plan["steps"]] == list(range(1, len(plan["steps"]) + 1))
+    assert plan["steps"][0]["source_ids"] == [change["id"]]
+    assert plan["test_checklist"] and plan["open_questions"] and plan["proposed_task"]
+    assert set(analysis["report"]["evidence_gaps"]) <= set(plan["evidence_gaps"])
+    assert "ignore instructions" not in json.dumps(plan)
+    (root / "client.py").write_text("changed", encoding="utf-8")
+    assert client.get(f"{url}/{view['id']}").json() == view
+    assert client.get(url).json()[0]["id"] == view["id"]
+    assert "plan" not in client.get(url).json()[0]
+    assert client.get(url, params={"offset": 1}).json() == []
+    other = client.post("/api/projects", json={"name": "Other"}).json()["id"]
+    wrong = f"/api/projects/{other}/migration-plans"
+    assert client.get(f"{wrong}/{view['id']}").status_code == 404
+    assert client.get(wrong).json() == []
+    assert client.post(wrong, json={"analysis_id": analysis["id"]}).status_code == 404
+    assert (
+        client.post(url, json={"analysis_id": analysis["id"], "execute": True}).status_code == 422
+    )
+    assert client.post(url, content=b"x" * 16385).status_code == 413
+
+
+def test_migration_provider_rejects_unsupported_and_preserves_gaps(analysis_context):
+    from app.analysis_schemas import ImpactReport
+    from app.migration_agent import FakePlanProvider, generate_plan
+
+    client, pid, data, change, root = analysis_context
+    saved = client.post(f"/api/projects/{pid}/analyses", json=data).json()
+    report = ImpactReport.model_validate(saved["report"])
+
+    class BadProvider:
+        def __init__(self, mode):
+            self.mode = mode
+
+        def generate(self, sources):
+            draft = json.loads(FakePlanProvider().generate(sources))
+            if self.mode == "unknown":
+                draft["steps"][0]["source_ids"] = ["invented"]
+            elif self.mode == "write":
+                draft["steps"][0]["action"] = "create_issue"
+            elif self.mode == "instructions":
+                draft["steps"][0]["instruction"] = "execute a command"
+            elif self.mode == "missing":
+                draft["steps"].pop()
+            elif self.mode == "duplicate":
+                draft["steps"].append(draft["steps"][0])
+            elif self.mode == "wrong_kind":
+                draft["steps"][0]["action"] = "inspect_usage"
+            elif self.mode == "oversized":
+                return "x" * 16385
+            return json.dumps(draft)
+
+    for mode in (
+        "unknown",
+        "write",
+        "instructions",
+        "missing",
+        "duplicate",
+        "wrong_kind",
+        "oversized",
+    ):
+        with pytest.raises(ValueError):
+            generate_plan(report, BadProvider(mode))
+    report.code = None
+    report.knowledge = None
+    report.evidence_gaps = ["missing_context", "conflicting_sources"]
+    plan = generate_plan(report)
+    assert set(report.evidence_gaps) <= set(plan.evidence_gaps)
+    assert any("repository" in q for q in plan.open_questions)
+    assert any("guide" in q for q in plan.open_questions)
+    assert any("conflict" in q for q in plan.open_questions)
+
+
+def test_migration_plan_commit_failure_rolls_back(analysis_context, migrated, monkeypatch):
+    from sqlalchemy.exc import OperationalError
+    from sqlalchemy.orm import Session
+
+    from app.db.models import MigrationPlanRecord
+
+    client, pid, data, change, root = analysis_context
+    analysis = client.post(f"/api/projects/{pid}/analyses", json=data).json()
+
+    def fail_commit(self):
+        raise OperationalError("private", {}, Exception("secret"))
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(Session, "commit", fail_commit)
+        response = client.post(
+            f"/api/projects/{pid}/migration-plans", json={"analysis_id": analysis["id"]}
+        )
+        assert response.status_code == 503
+        assert "secret" not in response.text
+    with session_scope(migrated) as db:
+        assert db.scalars(select(MigrationPlanRecord)).all() == []
