@@ -24,7 +24,7 @@ class ProjectBodyLimit:
             limit, description = 16384, "Comparison request exceeds 16 KiB"
         elif re.fullmatch(r"/api/projects/[^/]+/documents", path):
             limit, description = 256 * 1024, "Document exceeds 256 KiB"
-        elif re.fullmatch(r"/api/projects/[^/]+/analyses", path):
+        elif re.fullmatch(r"/api/projects/[^/]+/(?:analyses|migration-plans)", path):
             limit, description = 16384, "Analysis request exceeds 16 KiB"
         elif re.fullmatch(r"/api/projects/[^/]+/sessions(?:/.*)?", path):
             limit, description = 16384, "Session request exceeds 16 KiB"

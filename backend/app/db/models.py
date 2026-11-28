@@ -281,3 +281,20 @@ class WorkflowExecution(Base):
     lease_id: Mapped[UUID | None]
     lease_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     summary: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
+
+
+class MigrationPlanRecord(Base):
+    __tablename__ = "migration_plans"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["project_id", "analysis_id"],
+            ["analysis_runs.project_id", "analysis_runs.id"],
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("jsonb_typeof(plan) = 'object'", name="ck_migration_plan"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    project_id: Mapped[UUID] = mapped_column(index=True)
+    analysis_id: Mapped[UUID]
+    plan: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
